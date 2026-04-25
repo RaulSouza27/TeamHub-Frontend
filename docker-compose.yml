@@ -1,0 +1,9 @@
+services:
+  teamhub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: teamhub
+    restart: unless-stopped
+    ports:
+      - "2630:80"

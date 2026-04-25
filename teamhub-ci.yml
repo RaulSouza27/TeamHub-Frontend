@@ -2,30 +2,7 @@
 #               Stage Declarations               #
 ###################################################
 stages:
-  - build
   - deploy
-
-###################################################
-#  Variáveis globais                             #
-###################################################
-variables:
-  IMAGE_NAME: teamhub
-  CONTAINER_PORT: "2630"
-
-###################################################
-#           Stage: build                          #
-###################################################
-docker-build:
-  stage: build
-  only:
-    - master
-    - develop
-  tags:
-    - teamhub
-  script:
-    - echo "🔨 Buildando imagem Docker localmente..."
-    - docker build -t $IMAGE_NAME:latest .
-    - echo "✅ Imagem $IMAGE_NAME:latest criada com sucesso!"
 
 ###################################################
 #           Stage: deploy                         #
@@ -38,14 +15,6 @@ docker-deploy:
   tags:
     - teamhub
   script:
-    - echo "🚀 Subindo o container..."
-    - docker stop $IMAGE_NAME || true
-    - docker rm $IMAGE_NAME || true
-    - docker run -d
-        --name $IMAGE_NAME
-        --restart unless-stopped
-        -p $CONTAINER_PORT:80
-        $IMAGE_NAME:latest
-    - echo "✅ Aplicação disponível na porta $CONTAINER_PORT!"
+    - docker compose up --build -d
   environment:
     name: production
