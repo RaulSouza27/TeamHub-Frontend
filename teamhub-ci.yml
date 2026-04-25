@@ -10,8 +10,12 @@ stages:
 testing-runner:
     stage: test
     only:
-        - master
-        - develop
+      - master
+      - develop
     tags: 
-        - teamhub
-    script: '@Testing CI runner..'
+      - teamhub
+    script:
+      - docker -v
+      - npm -v
+      - node -v
+        
