@@ -25,7 +25,7 @@ const features = [
 
 const stats = [
   { value: '98%', label: 'Satisfação dos colaboradores' },
-  { value: '3x',  label: 'Mais rápido no onboarding' },
+  { value: '3x', label: 'Mais rápido no onboarding' },
   { value: '500+', label: 'Empresas usando' },
   { value: '24/7', label: 'Suporte disponível' },
 ]
@@ -92,7 +92,7 @@ export default function Landing() {
           <div className="hero-trust">
             <span>Confiado por equipes de RH em todo o Brasil</span>
             <div className="hero-avatars">
-              {['AM','BS','CR','DL','EF'].map((i, idx) => (
+              {['AM', 'BS', 'CR', 'DL', 'EF'].map((i, idx) => (
                 <div key={idx} className="avatar avatar-sm" style={{
                   background: `hsl(${idx * 60 + 240}, 70%, 55%)`,
                   marginLeft: idx ? '-8px' : 0,
@@ -109,29 +109,29 @@ export default function Landing() {
           <div className="dashboard-preview glass">
             <div className="preview-header">
               <div className="preview-dots">
-                <span style={{background:'#FF5F57'}} />
-                <span style={{background:'#FEBC2E'}} />
-                <span style={{background:'#28C840'}} />
+                <span style={{ background: '#FF5F57' }} />
+                <span style={{ background: '#FEBC2E' }} />
+                <span style={{ background: '#28C840' }} />
               </div>
               <span className="preview-title">TeamHub Dashboard</span>
             </div>
             <div className="preview-body">
               <div className="preview-stat">
-                <div className="preview-stat-icon" style={{background:'rgba(108,71,255,0.2)'}}>👥</div>
+                <div className="preview-stat-icon" style={{ background: 'rgba(108,71,255,0.2)' }}>👥</div>
                 <div>
                   <div className="preview-stat-val">247</div>
                   <div className="preview-stat-lbl">Colaboradores</div>
                 </div>
               </div>
               <div className="preview-stat">
-                <div className="preview-stat-icon" style={{background:'rgba(0,201,167,0.2)'}}>✅</div>
+                <div className="preview-stat-icon" style={{ background: 'rgba(0,201,167,0.2)' }}>✅</div>
                 <div>
                   <div className="preview-stat-val">18</div>
                   <div className="preview-stat-lbl">Em onboarding</div>
                 </div>
               </div>
               <div className="preview-stat">
-                <div className="preview-stat-icon" style={{background:'rgba(255,107,157,0.2)'}}>💬</div>
+                <div className="preview-stat-icon" style={{ background: 'rgba(255,107,157,0.2)' }}>💬</div>
                 <div>
                   <div className="preview-stat-val">94%</div>
                   <div className="preview-stat-lbl">Engajamento</div>
@@ -139,7 +139,7 @@ export default function Landing() {
               </div>
               <div className="preview-bar-label">Admissões este mês</div>
               {[80, 60, 90, 45, 70, 55, 85].map((h, i) => (
-                <div key={i} className="preview-bar" style={{height: `${h}%`, animationDelay: `${i * 0.1}s`}} />
+                <div key={i} className="preview-bar" style={{ height: `${h}%`, animationDelay: `${i * 0.1}s` }} />
               ))}
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function Landing() {
       {/* ── STATS ── */}
       <section className="landing-stats" id="stats">
         {stats.map((s, i) => (
-          <div key={i} className="landing-stat-item fade-in" style={{animationDelay: `${i*0.1}s`}}>
+          <div key={i} className="landing-stat-item fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
             <div className="landing-stat-value gradient-text">{s.value}</div>
             <div className="landing-stat-label">{s.label}</div>
           </div>
@@ -164,13 +164,13 @@ export default function Landing() {
         </div>
         <div className="features-grid" id="modulos">
           {features.map((f, i) => (
-            <div key={i} className="feature-card glass fade-in" style={{animationDelay: `${i*0.15}s`}}>
-              <div className="feature-icon" style={{background: `${f.color}22`, color: f.color}}>
+            <div key={i} className="feature-card glass fade-in" style={{ animationDelay: `${i * 0.15}s` }}>
+              <div className="feature-icon" style={{ background: `${f.color}22`, color: f.color }}>
                 {f.icon}
               </div>
               <h3>{f.title}</h3>
               <p>{f.desc}</p>
-              <button className="feature-link" style={{color: f.color}} onClick={() => navigate('/login')}>
+              <button className="feature-link" style={{ color: f.color }} onClick={() => navigate('/login')}>
                 Saiba mais <ArrowRight size={14} />
               </button>
             </div>
@@ -179,7 +179,7 @@ export default function Landing() {
           {/* Extra cards */}
           <div className="feature-card glass feature-card-wide fade-in">
             <div className="feature-wide-content">
-              <div className="feature-icon" style={{background:'rgba(245,158,11,0.2)', color:'#F59E0B'}}>
+              <div className="feature-icon" style={{ background: 'rgba(245,158,11,0.2)', color: '#F59E0B' }}>
                 <Shield size={22} />
               </div>
               <div>
@@ -190,7 +190,7 @@ export default function Landing() {
           </div>
           <div className="feature-card glass feature-card-wide fade-in">
             <div className="feature-wide-content">
-              <div className="feature-icon" style={{background:'rgba(0,201,167,0.2)', color:'#00C9A7'}}>
+              <div className="feature-icon" style={{ background: 'rgba(0,201,167,0.2)', color: '#00C9A7' }}>
                 <BarChart2 size={22} />
               </div>
               <div>
@@ -201,7 +201,7 @@ export default function Landing() {
           </div>
           <div className="feature-card glass feature-card-wide fade-in">
             <div className="feature-wide-content">
-              <div className="feature-icon" style={{background:'rgba(108,71,255,0.2)', color:'#6C47FF'}}>
+              <div className="feature-icon" style={{ background: 'rgba(108,71,255,0.2)', color: '#6C47FF' }}>
                 <Globe size={22} />
               </div>
               <div>
@@ -225,11 +225,12 @@ export default function Landing() {
 
       {/* ── FOOTER ── */}
       <footer className="landing-footer">
-        <div className="landing-logo" style={{marginBottom: 8}}>
+        <div className="landing-logo" style={{ marginBottom: 8 }}>
           <div className="logo-icon"><Users size={16} /></div>
           <span>TeamHub</span>
         </div>
         <p>© 2026 TeamHub. Todos os direitos reservados.</p>
+        <p>Desenvolvido por Larissa & Raul</p>
       </footer>
     </div>
   )
