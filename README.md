@@ -1,115 +1,399 @@
-# TeamHub
+# 🚀 TeamHub - Plataforma Integrada de Gestão de Pessoas
 
-Plataforma de gestão de equipes e RH, desenvolvida com **React + Vite**.
+Sistema completo de gestão de pessoas com módulos de Admissão Digital, Onboarding e Comunicação Interna.
 
----
+## 📋 Índice
 
-## 📋 Pré-requisitos
-
-### Desenvolvimento local (sem Docker)
-
-| Ferramenta | Versão mínima | Download |
-|---|---|---|
-| Node.js | 20.x | [nodejs.org](https://nodejs.org) |
-| npm | 9.x (já vem com o Node) | — |
-
-### Via Docker (produção / CI)
-
-| Ferramenta | Versão mínima | Download |
-|---|---|---|
-| Docker | 24.x | [docker.com](https://www.docker.com/get-started) |
-| Docker Compose | v2 (plugin) | já incluso no Docker Desktop |
+- [Sobre o Projeto](#sobre-o-projeto)
+- [Tecnologias](#tecnologias)
+- [Estrutura do Projeto](#estrutura-do-projeto)
+- [Instalação](#instalação)
+- [Uso](#uso)
+- [API](#api)
+- [Contribuindo](#contribuindo)
+- [Licença](#licença)
 
 ---
 
-## 🚀 Rodando localmente
+## 📖 Sobre o Projeto
 
-### 1. Clonar o repositório
+O TeamHub é uma plataforma moderna e integrada para gestão de pessoas que automatiza e otimiza a jornada do colaborador desde a admissão até a integração completa na organização.
 
-```bash
-git clone https://gitlab.com/RaulSouza27/teamhub.git
-cd teamhub
-```
+### Módulos Principais
 
-### 2. Instalar dependências
+1. **Admissão Digital** - Automatização do processo de entrada
+2. **Gestão de Onboarding** - Trilhas personalizadas de integração
+3. **Comunicação Interna** - Feed social + Chat em tempo real
 
-```bash
-npm install
-```
+### Perfis de Usuário
 
-### 3. Iniciar o servidor de desenvolvimento
-
-```bash
-npm run dev
-```
-
-A aplicação estará disponível em **http://localhost:5173**
-
-> O servidor de desenvolvimento possui Hot Module Replacement (HMR) — as alterações no código refletem instantaneamente no browser sem precisar recarregar a página.
+- **Colaborador** - Usuário padrão
+- **RH** - Gerenciamento de admissões e onboarding
+- **Gestor** - Gestão de equipes
 
 ---
 
-## 🐳 Rodando com Docker
+## 🛠️ Tecnologias
 
-### Build e subir o container
+### Frontend
 
-```bash
-docker compose up --build -d
-```
+- React 18.3.1
+- TypeScript
+- React Router 7
+- Tailwind CSS v4
+- Lucide Icons
+- Vite
 
-A aplicação estará disponível em **http://localhost:2630**
+### Backend
 
-### Parar o container
-
-```bash
-docker compose down
-```
-
-### Ver logs do container
-
-```bash
-docker compose logs -f
-```
-
----
-
-## 🔧 Scripts disponíveis
-
-| Comando | Descrição |
-|---|---|
-| `npm run dev` | Inicia o servidor de desenvolvimento |
-| `npm run build` | Gera o build de produção na pasta `/dist` |
-| `npm run preview` | Serve o build de produção localmente |
-| `npm run lint` | Executa o ESLint no projeto |
+- Node.js 18+
+- TypeScript
+- Express
+- Prisma ORM
+- PostgreSQL
+- JWT Authentication
+- Socket.io (WebSocket)
+- Bcrypt
 
 ---
 
-## 🏗️ Estrutura do projeto
+## 📁 Estrutura do Projeto
 
 ```
 teamhub/
-├── public/              # Assets estáticos
-├── src/
-│   ├── components/      # Componentes reutilizáveis
-│   ├── pages/           # Páginas da aplicação
-│   └── main.jsx         # Entry point
-├── Dockerfile           # Imagem Docker multi-stage (Node → Nginx)
-├── docker-compose.yml   # Orquestração do container
-├── nginx.conf           # Configuração do Nginx (dentro do container)
-├── teamhub-ci.yml       # Pipeline GitLab CI/CD
-└── vite.config.js       # Configuração do Vite
+├── src/                      # Frontend React
+│   ├── app/
+│   │   ├── components/       # Componentes React
+│   │   ├── context/          # Context API
+│   │   └── routes.tsx        # Rotas
+│   └── styles/               # Estilos Tailwind
+│
+├── backend/                  # Backend Node.js
+│   ├── src/
+│   │   ├── config/           # Configurações
+│   │   ├── controllers/      # Controllers
+│   │   ├── middlewares/      # Middlewares
+│   │   ├── routes/           # Rotas da API
+│   │   └── server.ts         # Entry point
+│   └── prisma/               # Schema e migrations
+│
+├── TODOS_OS_CODIGOS.md      # Documentação frontend
+├── INSTALACAO_BACKEND.md    # Guia instalação backend
+└── README.md                # Este arquivo
 ```
 
 ---
 
-## ⚙️ CI/CD
+## 🚀 Instalação
 
-O pipeline GitLab CI (`teamhub-ci.yml`) é disparado automaticamente nos branches `master` e `develop`.
+### Pré-requisitos
 
-Ao fazer push, o pipeline executa:
+- Node.js 18+ ou superior
+- PostgreSQL 12+ ou superior
+- pnpm (recomendado) ou npm
+
+### 1. Clonar Repositório
+
+```bash
+git clone https://github.com/seu-usuario/teamhub.git
+cd teamhub
+```
+
+### 2. Instalar Frontend
+
+```bash
+# Instalar dependências
+pnpm install
+
+# Copiar variáveis de ambiente
+cp .env.example .env
+
+# Iniciar servidor de desenvolvimento
+pnpm run dev
+```
+
+Frontend estará em: **http://localhost:5173**
+
+### 3. Instalar Backend
+
+```bash
+cd backend
+
+# Instalar dependências
+npm install
+
+# Copiar variáveis de ambiente
+cp .env.example .env
+
+# Configurar DATABASE_URL no .env
+# Exemplo: DATABASE_URL="postgresql://postgres:postgres@localhost:5432/teamhub"
+
+# Executar migrations
+npx prisma migrate dev
+
+# Popular banco de dados
+npm run prisma:seed
+
+# Iniciar servidor
+npm run dev
+```
+
+Backend estará em: **http://localhost:3333**
+
+---
+
+## 🎯 Uso
+
+### Credenciais de Teste
+
+Após executar o seed do backend:
+
+| Perfil | Email | Senha |
+|--------|-------|-------|
+| Colaborador | colaborador@teamhub.com | 123456 |
+| RH | rh@teamhub.com | 123456 |
+| Gestor | gestor@teamhub.com | 123456 |
+
+### Acessar Aplicação
+
+1. Abra http://localhost:5173
+2. Faça login com uma das credenciais acima
+3. Explore os módulos disponíveis
+
+---
+
+## 📡 API
+
+### Base URL
 
 ```
-git push → docker compose up --build -d → aplicação disponível na porta 2630
+http://localhost:3333/api
 ```
 
-> **Requisito:** o GitLab Runner deve estar configurado no modo `shell` com acesso ao Docker daemon da máquina host.
+### Endpoints Principais
+
+#### Autenticação
+
+```bash
+# Login
+POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "colaborador@teamhub.com",
+  "password": "123456"
+}
+
+# Resposta
+{
+  "user": { ... },
+  "token": "jwt-token"
+}
+```
+
+#### Admissões
+
+```bash
+# Listar admissões
+GET /admissions
+Authorization: Bearer {token}
+
+# Upload de documento
+POST /admissions/documents/upload
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+
+#### Onboarding
+
+```bash
+# Listar onboardings
+GET /onboarding
+Authorization: Bearer {token}
+
+# Atualizar progresso
+PATCH /onboarding/:id/progress
+Authorization: Bearer {token}
+```
+
+#### Comunicação
+
+```bash
+# Listar posts
+GET /posts
+Authorization: Bearer {token}
+
+# Curtir post
+POST /posts/:id/like
+Authorization: Bearer {token}
+```
+
+#### Chat
+
+```bash
+# Enviar mensagem
+POST /messages
+Authorization: Bearer {token}
+
+{
+  "receiverId": "user-id",
+  "content": "Mensagem"
+}
+
+# Buscar conversas
+GET /conversations
+Authorization: Bearer {token}
+```
+
+Para documentação completa da API, veja [backend/README.md](backend/README.md)
+
+---
+
+## 🔌 WebSocket
+
+### Conectar ao Chat
+
+```javascript
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3333');
+
+// Registrar usuário
+socket.emit('register', userId);
+
+// Enviar mensagem
+socket.emit('send-message', {
+  senderId: 'user-id',
+  receiverId: 'recipient-id',
+  content: 'Olá!'
+});
+
+// Receber mensagem
+socket.on('receive-message', (message) => {
+  console.log('Nova mensagem:', message);
+});
+```
+
+---
+
+## 🗄️ Banco de Dados
+
+### Visualizar Dados
+
+```bash
+cd backend
+npx prisma studio
+```
+
+Abrirá interface em: **http://localhost:5555**
+
+### Resetar Banco de Dados
+
+```bash
+cd backend
+npx prisma migrate reset
+npm run prisma:seed
+```
+
+---
+
+## 🚀 Deploy
+
+### Frontend (Vercel)
+
+```bash
+# Configurar variável de ambiente
+VITE_API_URL=https://sua-api.herokuapp.com/api
+
+# Deploy
+vercel --prod
+```
+
+### Backend (Heroku)
+
+```bash
+# Criar app
+heroku create teamhub-api
+
+# Adicionar PostgreSQL
+heroku addons:create heroku-postgresql:mini
+
+# Configurar variáveis
+heroku config:set JWT_SECRET=$(openssl rand -base64 32)
+heroku config:set CORS_ORIGIN=https://seu-frontend.vercel.app
+
+# Deploy
+git push heroku main
+
+# Executar migrations
+heroku run npx prisma migrate deploy
+```
+
+---
+
+## 🧪 Testes
+
+### Backend
+
+```bash
+cd backend
+npm test
+```
+
+### Frontend
+
+```bash
+npm test
+```
+
+---
+
+## 📚 Documentação Adicional
+
+- [Código Frontend Completo](TODOS_OS_CODIGOS.md)
+- [Instalação Backend](INSTALACAO_BACKEND.md)
+- [Integração Frontend-Backend](INTEGRACAO_FRONTEND_BACKEND.md)
+- [API Backend](backend/README.md)
+
+---
+
+## 🤝 Contribuindo
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+---
+
+## 📄 Licença
+
+MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
+
+---
+
+## 👥 Autores
+
+- **TeamHub Development Team**
+
+---
+
+## 📞 Suporte
+
+Para suporte, abra uma issue no GitHub ou envie um email para suporte@teamhub.com
+
+---
+
+## 🙏 Agradecimentos
+
+- React Team
+- Prisma Team
+- Express Team
+- Todos os contribuidores open source
+
+---
+
+**Desenvolvido com ❤️ usando Claude Code**
+
+Última atualização: Abril 2026
