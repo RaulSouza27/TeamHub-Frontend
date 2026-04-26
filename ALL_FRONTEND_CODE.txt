@@ -1,0 +1,3507 @@
+===========================================
+TEAMHUB - CÓDIGO FRONTEND COMPLETO
+===========================================
+
+📁 ESTRUTURA DO PROJETO
+-----------------------
+src/
+├── app/
+│   ├── App.tsx
+│   ├── routes.tsx
+│   ├── context/
+│   │   └── AuthContext.tsx
+│   └── components/
+│       ├── layouts/
+│       │   └── RootLayout.tsx
+│       └── pages/
+│           ├── Login.tsx
+│           ├── Dashboard.tsx
+│           ├── Admissao.tsx
+│           ├── Onboarding.tsx
+│           └── Comunicacao.tsx
+
+===========================================
+ARQUIVO 1: src/app/App.tsx
+===========================================
+
+import { RouterProvider } from "react-router";
+import { AuthProvider } from "./context/AuthContext";
+import { router } from "./routes";
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
+}
+===========================================
+ARQUIVO 2: src/app/routes.tsx
+===========================================
+
+import { createBrowserRouter } from "react-router";
+import { RootLayout } from "./components/layouts/RootLayout";
+import { Login } from "./components/pages/Login";
+import { Dashboard } from "./components/pages/Dashboard";
+import { Admissao } from "./components/pages/Admissao";
+import { Onboarding } from "./components/pages/Onboarding";
+import { Comunicacao } from "./components/pages/Comunicacao";
+
+export const router = createBrowserRouter([
+  {
+    path: "/login",
+    Component: Login,
+  },
+  {
+    path: "/",
+    Component: RootLayout,
+    children: [
+      {
+        index: true,
+        Component: Dashboard,
+      },
+      {
+        path: "admissao",
+        Component: Admissao,
+      },
+      {
+        path: "onboarding",
+        Component: Onboarding,
+      },
+      {
+        path: "comunicacao",
+        Component: Comunicacao,
+      },
+    ],
+  },
+]);
+
+===========================================
+ARQUIVO 3: src/app/context/AuthContext.tsx
+===========================================
+
+import { createContext, useContext, useState, ReactNode } from "react";
+
+export type UserRole = "colaborador" | "rh" | "gestor";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar?: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  isAuthenticated: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+
+  const login = async (email: string, password: string) => {
+    // Simulação de autenticação - em produção, conectar com API real
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Mock de usuários para demonstração
+    const mockUsers: Record<string, User> = {
+      "colaborador@teamhub.com": {
+        id: "1",
+        name: "João Silva",
+        email: "colaborador@teamhub.com",
+        role: "colaborador",
+      },
+      "rh@teamhub.com": {
+        id: "2",
+        name: "Maria Santos",
+        email: "rh@teamhub.com",
+        role: "rh",
+      },
+      "gestor@teamhub.com": {
+        id: "3",
+        name: "Carlos Oliveira",
+        email: "gestor@teamhub.com",
+        role: "gestor",
+      },
+    };
+
+    const foundUser = mockUsers[email];
+    if (foundUser && password === "123456") {
+      setUser(foundUser);
+    } else {
+      throw new Error("Credenciais inválidas");
+    }
+  };
+
+  const logout = () => {
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        isAuthenticated: !!user,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
+
+===========================================
+ARQUIVO 4: src/app/components/layouts/RootLayout.tsx
+===========================================
+
+import { useEffect } from "react";
+import { Outlet, useNavigate, Link, useLocation } from "react-router";
+import { useAuth } from "../../context/AuthContext";
+import {
+  LayoutDashboard,
+  UserPlus,
+  GraduationCap,
+  MessageSquare,
+  LogOut,
+  Building2,
+  Menu,
+} from "lucide-react";
+import { useState } from "react";
+
+export function RootLayout() {
+  const { user, logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
+
+  const menuItems = [
+    {
+      icon: LayoutDashboard,
+      label: "Dashboard",
+      path: "/",
+      roles: ["colaborador", "rh", "gestor"],
+    },
+    {
+      icon: UserPlus,
+      label: "Admissão Digital",
+      path: "/admissao",
+      roles: ["rh", "colaborador"],
+    },
+    {
+      icon: GraduationCap,
+      label: "Onboarding",
+      path: "/onboarding",
+      roles: ["colaborador", "rh", "gestor"],
+    },
+    {
+      icon: MessageSquare,
+      label: "Comunicação",
+      path: "/comunicacao",
+      roles: ["colaborador", "rh", "gestor"],
+    },
+  ];
+
+  const filteredMenuItems = menuItems.filter((item) =>
+    item.roles.includes(user.role)
+  );
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case "rh":
+        return "bg-purple-100 text-purple-700";
+      case "gestor":
+        return "bg-green-100 text-green-700";
+      default:
+        return "bg-blue-100 text-blue-700";
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case "rh":
+        return "RH";
+      case "gestor":
+        return "Gestor";
+      default:
+        return "Colaborador";
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <aside
+        className={`${
+          sidebarOpen ? "w-64" : "w-20"
+        } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}
+      >
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          {sidebarOpen ? (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg text-gray-900">TeamHub</h1>
+                <p className="text-xs text-gray-500">Gestão de Pessoas</p>
+              </div>
+            </div>
+          ) : (
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mx-auto">
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
+          )}
+        </div>
+
+        {/* Toggle Button */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="p-4 hover:bg-gray-50 transition flex items-center justify-center border-b border-gray-200"
+        >
+          <Menu className="w-5 h-5 text-gray-600" />
+        </button>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {filteredMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                  isActive
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-50"
+                } ${!sidebarOpen && "justify-center"}`}
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                {sidebarOpen && <span>{item.label}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User Profile */}
+        <div className="p-4 border-t border-gray-200">
+          {sidebarOpen ? (
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white">
+                  {user.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-900 truncate">{user.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                </div>
+              </div>
+              <div
+                className={`inline-block px-3 py-1 rounded-full text-xs ${getRoleBadgeColor(
+                  user.role
+                )}`}
+              >
+                {getRoleLabel(user.role)}
+              </div>
+            </div>
+          ) : (
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white mx-auto mb-4">
+              {user.name.charAt(0)}
+            </div>
+          )}
+
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+          >
+            <LogOut className="w-5 h-5" />
+            {sidebarOpen && <span>Sair</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto">
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
+===========================================
+ARQUIVO 5: src/app/components/pages/Login.tsx
+===========================================
+
+import { useState, FormEvent } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "../../context/AuthContext";
+import { Building2, Mail, Lock, Loader2, Users, Target, TrendingUp, Sparkles } from "lucide-react";
+
+export function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      await login(email, password);
+      navigate("/");
+    } catch (err) {
+      setError("Email ou senha inválidos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Lado Esquerdo - Imagem e Informações */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 relative overflow-hidden">
+        {/* Imagem de fundo com overlay */}
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1758691736843-90f58dce465e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+            alt="Equipe colaborando"
+            className="w-full h-full object-cover opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/90 via-purple-600/90 to-pink-500/90" />
+        </div>
+
+        {/* Conteúdo */}
+        <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
+          {/* Logo e Nome */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <Building2 className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl">TeamHub</h1>
+              <p className="text-sm text-white/80">Gestão de Pessoas</p>
+            </div>
+          </div>
+
+          {/* Informações Centrais */}
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-4xl mb-4 leading-tight">
+                Transforme a gestão
+                <br />
+                de pessoas da sua
+                <br />
+                organização
+              </h2>
+              <p className="text-lg text-white/90 max-w-md">
+                Plataforma integrada para admissão digital, onboarding e comunicação interna.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-medium">Admissão Digital</p>
+                  <p className="text-sm text-white/80">Automatize processos de entrada</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-medium">Onboarding Estruturado</p>
+                  <p className="text-sm text-white/80">Trilhas personalizadas de integração</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-medium">Comunicação Integrada</p>
+                  <p className="text-sm text-white/80">Conecte toda a organização</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center gap-2 text-white/70 text-sm">
+            <Sparkles className="w-4 h-4" />
+            <p>Desenvolvido para equipes modernas e ágeis</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Lado Direito - Formulário */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
+        <div className="w-full max-w-md">
+          {/* Header Mobile */}
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+              <Building2 className="w-9 h-9 text-white" />
+            </div>
+            <h1 className="text-3xl text-gray-900 mb-1">TeamHub</h1>
+            <p className="text-gray-600">Bem-vindo de volta!</p>
+          </div>
+
+          {/* Desktop Header */}
+          <div className="hidden lg:block mb-8">
+            <h2 className="text-3xl text-gray-900 mb-2">Bem-vindo de volta!</h2>
+            <p className="text-gray-600">Acesse sua conta para continuar</p>
+          </div>
+
+          {/* Formulário */}
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label htmlFor="email" className="block text-gray-700 mb-2">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
+                    placeholder="seu@email.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label htmlFor="password" className="block text-gray-700">
+                    Senha
+                  </label>
+                  <a href="#" className="text-sm text-purple-600 hover:text-purple-700">
+                    Esqueceu?
+                  </a>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white py-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar na Plataforma"
+                )}
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-500">Contas de demonstração</span>
+              </div>
+            </div>
+
+            {/* Usuários Demo - Compacto */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("colaborador@teamhub.com");
+                  setPassword("123456");
+                }}
+                className="w-full text-left px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition border border-blue-200"
+              >
+                <p className="text-sm text-blue-900">
+                  <span className="font-medium">Colaborador</span> · colaborador@teamhub.com
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("rh@teamhub.com");
+                  setPassword("123456");
+                }}
+                className="w-full text-left px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition border border-purple-200"
+              >
+                <p className="text-sm text-purple-900">
+                  <span className="font-medium">RH</span> · rh@teamhub.com
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("gestor@teamhub.com");
+                  setPassword("123456");
+                }}
+                className="w-full text-left px-4 py-3 bg-green-50 hover:bg-green-100 rounded-lg transition border border-green-200"
+              >
+                <p className="text-sm text-green-900">
+                  <span className="font-medium">Gestor</span> · gestor@teamhub.com
+                </p>
+              </button>
+
+              <p className="text-xs text-gray-500 text-center pt-2">
+                Clique em qualquer conta para preencher automaticamente (senha: 123456)
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+===========================================
+ARQUIVO 6: src/app/components/pages/Dashboard.tsx
+===========================================
+
+import { useAuth } from "../../context/AuthContext";
+import {
+  Users,
+  FileCheck,
+  Clock,
+  TrendingUp,
+  UserCheck,
+  Calendar,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
+
+export function Dashboard() {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl text-gray-900 mb-2">
+          Bem-vindo, {user.name}!
+        </h1>
+        <p className="text-gray-600">
+          {new Date().toLocaleDateString("pt-BR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+      </div>
+
+      {/* Dashboard por perfil */}
+      {user.role === "colaborador" && <ColaboradorDashboard />}
+      {user.role === "rh" && <RHDashboard />}
+      {user.role === "gestor" && <GestorDashboard />}
+    </div>
+  );
+}
+
+function ColaboradorDashboard() {
+  return (
+    <div className="space-y-6">
+      {/* Cards de Status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard
+          icon={CheckCircle}
+          title="Admissão"
+          value="Concluída"
+          color="green"
+          description="Documentos aprovados"
+        />
+        <StatCard
+          icon={Clock}
+          title="Onboarding"
+          value="Em andamento"
+          color="blue"
+          description="3 de 5 etapas concluídas"
+        />
+        <StatCard
+          icon={Calendar}
+          title="Próxima Atividade"
+          value="Amanhã"
+          color="purple"
+          description="Treinamento de Segurança"
+        />
+      </div>
+
+      {/* Minhas Tarefas */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-4">Minhas Tarefas</h2>
+        <div className="space-y-3">
+          <TaskItem
+            title="Completar treinamento de integração"
+            status="pending"
+            date="Hoje"
+          />
+          <TaskItem
+            title="Assinar código de conduta"
+            status="pending"
+            date="Até 20/04"
+          />
+          <TaskItem
+            title="Conhecer a equipe"
+            status="completed"
+            date="Concluído"
+          />
+        </div>
+      </div>
+
+      {/* Trilha de Onboarding */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-4">Minha Trilha de Integração</h2>
+        <div className="space-y-4">
+          <ProgressStep title="Boas-vindas" completed />
+          <ProgressStep title="Documentação" completed />
+          <ProgressStep title="Treinamento inicial" completed />
+          <ProgressStep title="Conhecendo a equipe" current />
+          <ProgressStep title="Primeiro projeto" upcoming />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RHDashboard() {
+  return (
+    <div className="space-y-6">
+      {/* Métricas principais */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard
+          icon={Users}
+          title="Admissões Ativas"
+          value="12"
+          color="blue"
+          description="+3 esta semana"
+        />
+        <StatCard
+          icon={FileCheck}
+          title="Docs Pendentes"
+          value="8"
+          color="orange"
+          description="Aguardando validação"
+        />
+        <StatCard
+          icon={UserCheck}
+          title="Onboardings Ativos"
+          value="15"
+          color="green"
+          description="5 concluem esta semana"
+        />
+        <StatCard
+          icon={TrendingUp}
+          title="Taxa de Conclusão"
+          value="94%"
+          color="purple"
+          description="+2% vs. mês anterior"
+        />
+      </div>
+
+      {/* Admissões Pendentes */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-4">
+          Admissões Pendentes de Validação
+        </h2>
+        <div className="space-y-3">
+          <AdmissionItem
+            name="Ana Paula Costa"
+            department="Tecnologia"
+            status="pending"
+            date="17/04/2026"
+          />
+          <AdmissionItem
+            name="Ricardo Mendes"
+            department="Marketing"
+            status="pending"
+            date="18/04/2026"
+          />
+          <AdmissionItem
+            name="Juliana Santos"
+            department="Vendas"
+            status="review"
+            date="16/04/2026"
+          />
+        </div>
+      </div>
+
+      {/* Métricas de Onboarding */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl text-gray-900 mb-4">
+            Onboardings por Departamento
+          </h2>
+          <div className="space-y-3">
+            <DepartmentBar department="Tecnologia" count={8} total={15} />
+            <DepartmentBar department="Vendas" count={4} total={15} />
+            <DepartmentBar department="Marketing" count={3} total={15} />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl text-gray-900 mb-4">Alertas e Notificações</h2>
+          <div className="space-y-3">
+            <AlertItem
+              type="warning"
+              message="3 colaboradores com documentos vencendo em 7 dias"
+            />
+            <AlertItem
+              type="info"
+              message="5 onboardings serão concluídos esta semana"
+            />
+            <AlertItem
+              type="success"
+              message="Taxa de satisfação do onboarding: 4.8/5"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GestorDashboard() {
+  return (
+    <div className="space-y-6">
+      {/* Métricas da equipe */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard
+          icon={Users}
+          title="Minha Equipe"
+          value="24"
+          color="blue"
+          description="Colaboradores ativos"
+        />
+        <StatCard
+          icon={UserCheck}
+          title="Novos Membros"
+          value="3"
+          color="green"
+          description="Em integração"
+        />
+        <StatCard
+          icon={Calendar}
+          title="Reuniões Agendadas"
+          value="5"
+          color="purple"
+          description="Esta semana"
+        />
+        <StatCard
+          icon={TrendingUp}
+          title="Performance"
+          value="92%"
+          color="orange"
+          description="Metas atingidas"
+        />
+      </div>
+
+      {/* Novos Colaboradores */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-4">
+          Novos Membros da Equipe
+        </h2>
+        <div className="space-y-4">
+          <TeamMemberCard
+            name="João Silva"
+            role="Desenvolvedor Frontend"
+            startDate="15/04/2026"
+            progress={60}
+            status="Em integração"
+          />
+          <TeamMemberCard
+            name="Maria Souza"
+            role="Designer UX/UI"
+            startDate="10/04/2026"
+            progress={85}
+            status="Quase concluído"
+          />
+          <TeamMemberCard
+            name="Pedro Santos"
+            role="Analista de Dados"
+            startDate="18/04/2026"
+            progress={30}
+            status="Início"
+          />
+        </div>
+      </div>
+
+      {/* Ações Pendentes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl text-gray-900 mb-4">Ações Pendentes</h2>
+          <div className="space-y-3">
+            <TaskItem
+              title="Revisar plano de desenvolvimento - João Silva"
+              status="pending"
+              date="Hoje"
+            />
+            <TaskItem
+              title="Reunião 1:1 com Maria Souza"
+              status="pending"
+              date="Amanhã"
+            />
+            <TaskItem
+              title="Aprovar objetivos do trimestre"
+              status="pending"
+              date="22/04"
+            />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl text-gray-900 mb-4">Próximos Eventos</h2>
+          <div className="space-y-3">
+            <EventItem
+              title="Reunião de equipe semanal"
+              date="19/04/2026"
+              time="10:00"
+            />
+            <EventItem
+              title="Apresentação de novos membros"
+              date="20/04/2026"
+              time="14:00"
+            />
+            <EventItem
+              title="Workshop de liderança"
+              date="22/04/2026"
+              time="09:00"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Componentes auxiliares
+function StatCard({
+  icon: Icon,
+  title,
+  value,
+  color,
+  description,
+}: {
+  icon: any;
+  title: string;
+  value: string;
+  color: string;
+  description: string;
+}) {
+  const colorClasses = {
+    blue: "bg-blue-500",
+    green: "bg-green-500",
+    orange: "bg-orange-500",
+    purple: "bg-purple-500",
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="flex items-center gap-4">
+        <div
+          className={`w-12 h-12 ${colorClasses[color as keyof typeof colorClasses]} rounded-lg flex items-center justify-center`}
+        >
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm text-gray-600">{title}</p>
+          <p className="text-2xl text-gray-900">{value}</p>
+          <p className="text-xs text-gray-500 mt-1">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TaskItem({
+  title,
+  status,
+  date,
+}: {
+  title: string;
+  status: "pending" | "completed";
+  date: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+      <div
+        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+          status === "completed"
+            ? "bg-green-500 border-green-500"
+            : "border-gray-300"
+        }`}
+      >
+        {status === "completed" && (
+          <CheckCircle className="w-4 h-4 text-white" />
+        )}
+      </div>
+      <div className="flex-1">
+        <p
+          className={`text-sm ${
+            status === "completed"
+              ? "text-gray-500 line-through"
+              : "text-gray-900"
+          }`}
+        >
+          {title}
+        </p>
+      </div>
+      <span className="text-xs text-gray-500">{date}</span>
+    </div>
+  );
+}
+
+function ProgressStep({
+  title,
+  completed = false,
+  current = false,
+  upcoming = false,
+}: {
+  title: string;
+  completed?: boolean;
+  current?: boolean;
+  upcoming?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className={`w-8 h-8 rounded-full flex items-center justify-center ${
+          completed
+            ? "bg-green-500"
+            : current
+              ? "bg-blue-500"
+              : "bg-gray-200"
+        }`}
+      >
+        {completed ? (
+          <CheckCircle className="w-5 h-5 text-white" />
+        ) : (
+          <div className="w-3 h-3 rounded-full bg-white" />
+        )}
+      </div>
+      <p
+        className={`${
+          completed || current ? "text-gray-900" : "text-gray-400"
+        }`}
+      >
+        {title}
+      </p>
+    </div>
+  );
+}
+
+function AdmissionItem({
+  name,
+  department,
+  status,
+  date,
+}: {
+  name: string;
+  department: string;
+  status: string;
+  date: string;
+}) {
+  return (
+    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+      <div>
+        <p className="text-gray-900">{name}</p>
+        <p className="text-sm text-gray-600">{department}</p>
+      </div>
+      <div className="text-right">
+        <span
+          className={`inline-block px-3 py-1 rounded-full text-xs ${
+            status === "pending"
+              ? "bg-orange-100 text-orange-700"
+              : "bg-blue-100 text-blue-700"
+          }`}
+        >
+          {status === "pending" ? "Pendente" : "Em análise"}
+        </span>
+        <p className="text-xs text-gray-500 mt-1">{date}</p>
+      </div>
+    </div>
+  );
+}
+
+function DepartmentBar({
+  department,
+  count,
+  total,
+}: {
+  department: string;
+  count: number;
+  total: number;
+}) {
+  const percentage = (count / total) * 100;
+
+  return (
+    <div>
+      <div className="flex justify-between mb-1">
+        <span className="text-sm text-gray-700">{department}</span>
+        <span className="text-sm text-gray-600">{count}</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div
+          className="bg-blue-500 h-2 rounded-full"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AlertItem({ type, message }: { type: string; message: string }) {
+  const typeStyles = {
+    warning: "bg-orange-50 border-orange-200 text-orange-700",
+    info: "bg-blue-50 border-blue-200 text-blue-700",
+    success: "bg-green-50 border-green-200 text-green-700",
+  };
+
+  return (
+    <div
+      className={`p-3 border rounded-lg flex items-start gap-2 ${typeStyles[type as keyof typeof typeStyles]}`}
+    >
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <p className="text-sm">{message}</p>
+    </div>
+  );
+}
+
+function TeamMemberCard({
+  name,
+  role,
+  startDate,
+  progress,
+  status,
+}: {
+  name: string;
+  role: string;
+  startDate: string;
+  progress: number;
+  status: string;
+}) {
+  return (
+    <div className="p-4 bg-gray-50 rounded-lg">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className="text-gray-900">{name}</p>
+          <p className="text-sm text-gray-600">{role}</p>
+          <p className="text-xs text-gray-500 mt-1">Início: {startDate}</p>
+        </div>
+        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+          {status}
+        </span>
+      </div>
+      <div className="space-y-1">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Progresso do onboarding</span>
+          <span className="text-gray-900">{progress}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-blue-500 h-2 rounded-full"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EventItem({
+  title,
+  date,
+  time,
+}: {
+  title: string;
+  date: string;
+  time: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+      <div className="w-12 h-12 bg-blue-100 rounded-lg flex flex-col items-center justify-center">
+        <span className="text-xs text-blue-600">
+          {date.split("/")[0]}
+        </span>
+        <span className="text-xs text-blue-600">
+          {date.split("/")[1]}
+        </span>
+      </div>
+      <div className="flex-1">
+        <p className="text-sm text-gray-900">{title}</p>
+        <p className="text-xs text-gray-600">{time}</p>
+      </div>
+    </div>
+  );
+}
+
+===========================================
+ARQUIVO 7: src/app/components/pages/Admissao.tsx
+===========================================
+
+import { useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import {
+  Upload,
+  FileText,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Download,
+  Eye,
+  X,
+} from "lucide-react";
+
+type DocumentStatus = "pending" | "uploaded" | "approved" | "rejected";
+
+interface Document {
+  id: string;
+  name: string;
+  status: DocumentStatus;
+  uploadDate?: string;
+  approvalDate?: string;
+  fileUrl?: string;
+}
+
+export function Admissao() {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl text-gray-900 mb-2">Admissão Digital</h1>
+        <p className="text-gray-600">
+          {user.role === "rh"
+            ? "Gerencie documentos e validações de novos colaboradores"
+            : "Complete seu processo de admissão"}
+        </p>
+      </div>
+
+      {user.role === "rh" ? <RHAdmissaoView /> : <ColaboradorAdmissaoView />}
+    </div>
+  );
+}
+
+function ColaboradorAdmissaoView() {
+  const [documents, setDocuments] = useState<Document[]>([
+    {
+      id: "1",
+      name: "RG (Frente e Verso)",
+      status: "approved",
+      uploadDate: "12/04/2026",
+      approvalDate: "13/04/2026",
+    },
+    {
+      id: "2",
+      name: "CPF",
+      status: "approved",
+      uploadDate: "12/04/2026",
+      approvalDate: "13/04/2026",
+    },
+    {
+      id: "3",
+      name: "Comprovante de Residência",
+      status: "uploaded",
+      uploadDate: "15/04/2026",
+    },
+    {
+      id: "4",
+      name: "Carteira de Trabalho",
+      status: "pending",
+    },
+    {
+      id: "5",
+      name: "Título de Eleitor",
+      status: "pending",
+    },
+    {
+      id: "6",
+      name: "Certificado de Reservista",
+      status: "pending",
+    },
+    {
+      id: "7",
+      name: "Foto 3x4",
+      status: "approved",
+      uploadDate: "12/04/2026",
+      approvalDate: "13/04/2026",
+    },
+  ]);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+
+  const handleFileSelect = (docId: string, file: File) => {
+    setSelectedFile(file);
+    setUploadingDoc(docId);
+  };
+
+  const handleUpload = () => {
+    if (!selectedFile || !uploadingDoc) return;
+
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        doc.id === uploadingDoc
+          ? {
+              ...doc,
+              status: "uploaded",
+              uploadDate: new Date().toLocaleDateString("pt-BR"),
+            }
+          : doc
+      )
+    );
+
+    setSelectedFile(null);
+    setUploadingDoc(null);
+  };
+
+  const approved = documents.filter((d) => d.status === "approved").length;
+  const uploaded = documents.filter((d) => d.status === "uploaded").length;
+  const pending = documents.filter((d) => d.status === "pending").length;
+  const total = documents.length;
+  const progress = Math.round((approved / total) * 100);
+
+  return (
+    <div className="space-y-6">
+      {/* Status Geral */}
+      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl mb-2">Status da Admissão</h2>
+            <p className="text-blue-100">
+              {approved} de {total} documentos aprovados
+            </p>
+          </div>
+          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
+            <span className="text-3xl">{progress}%</span>
+          </div>
+        </div>
+        <div className="w-full bg-blue-400/50 rounded-full h-3">
+          <div
+            className="bg-white h-3 rounded-full transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3">
+          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+            <CheckCircle className="w-6 h-6 text-green-600" />
+          </div>
+          <div>
+            <p className="text-2xl text-gray-900">{approved}</p>
+            <p className="text-sm text-gray-600">Aprovados</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3">
+          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+            <Clock className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-2xl text-gray-900">{uploaded}</p>
+            <p className="text-sm text-gray-600">Em análise</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3">
+          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+            <AlertCircle className="w-6 h-6 text-orange-600" />
+          </div>
+          <div>
+            <p className="text-2xl text-gray-900">{pending}</p>
+            <p className="text-sm text-gray-600">Pendentes</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de Documentos */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-6">Documentos Necessários</h2>
+        <div className="space-y-4">
+          {documents.map((doc) => (
+            <DocumentCard
+              key={doc.id}
+              document={doc}
+              onFileSelect={(file) => handleFileSelect(doc.id, file)}
+              isUploading={uploadingDoc === doc.id}
+              selectedFile={uploadingDoc === doc.id ? selectedFile : null}
+              onUpload={handleUpload}
+              onCancelUpload={() => {
+                setUploadingDoc(null);
+                setSelectedFile(null);
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Próximos Passos */}
+      {pending > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <h3 className="text-lg text-blue-900 mb-2">Próximos Passos</h3>
+          <p className="text-blue-700 mb-4">
+            Você ainda tem {pending} documento{pending > 1 ? "s" : ""} pendente
+            {pending > 1 ? "s" : ""}. Complete o envio para prosseguir com o
+            onboarding.
+          </p>
+          <p className="text-sm text-blue-600">
+            💡 Dica: Certifique-se de que os documentos estejam legíveis e em
+            formato PDF ou imagem (JPG, PNG).
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RHAdmissaoView() {
+  const [candidates] = useState([
+    {
+      id: "1",
+      name: "Ana Paula Costa",
+      department: "Tecnologia",
+      position: "Desenvolvedora Backend",
+      startDate: "22/04/2026",
+      docsApproved: 5,
+      docsTotal: 7,
+      status: "pending",
+    },
+    {
+      id: "2",
+      name: "Ricardo Mendes",
+      department: "Marketing",
+      position: "Analista de Marketing",
+      startDate: "25/04/2026",
+      docsApproved: 7,
+      docsTotal: 7,
+      status: "approved",
+    },
+    {
+      id: "3",
+      name: "Juliana Santos",
+      department: "Vendas",
+      position: "Executiva de Contas",
+      startDate: "20/04/2026",
+      docsApproved: 4,
+      docsTotal: 7,
+      status: "review",
+    },
+  ]);
+
+  return (
+    <div className="space-y-6">
+      {/* Métricas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-blue-600" />
+            </div>
+            <p className="text-2xl text-gray-900">12</p>
+          </div>
+          <p className="text-sm text-gray-600">Admissões Ativas</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Clock className="w-5 h-5 text-orange-600" />
+            </div>
+            <p className="text-2xl text-gray-900">8</p>
+          </div>
+          <p className="text-sm text-gray-600">Docs Pendentes</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <p className="text-2xl text-gray-900">5</p>
+          </div>
+          <p className="text-sm text-gray-600">Concluídas</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-purple-600" />
+            </div>
+            <p className="text-2xl text-gray-900">3</p>
+          </div>
+          <p className="text-sm text-gray-600">Necessitam Atenção</p>
+        </div>
+      </div>
+
+      {/* Lista de Candidatos */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-6">
+          Candidatos em Processo de Admissão
+        </h2>
+        <div className="space-y-4">
+          {candidates.map((candidate) => (
+            <CandidateCard key={candidate.id} candidate={candidate} />
+          ))}
+        </div>
+      </div>
+
+      {/* Integração eSocial */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-4">Integração eSocial</h2>
+        <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-6 h-6 text-green-600" />
+            <div>
+              <p className="text-green-900">Sistema conectado</p>
+              <p className="text-sm text-green-700">
+                Última sincronização: Hoje às 14:30
+              </p>
+            </div>
+          </div>
+          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+            Sincronizar Agora
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DocumentCard({
+  document,
+  onFileSelect,
+  isUploading,
+  selectedFile,
+  onUpload,
+  onCancelUpload,
+}: {
+  document: Document;
+  onFileSelect: (file: File) => void;
+  isUploading: boolean;
+  selectedFile: File | null;
+  onUpload: () => void;
+  onCancelUpload: () => void;
+}) {
+  const getStatusIcon = () => {
+    switch (document.status) {
+      case "approved":
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case "uploaded":
+        return <Clock className="w-5 h-5 text-blue-600" />;
+      case "rejected":
+        return <AlertCircle className="w-5 h-5 text-red-600" />;
+      default:
+        return <FileText className="w-5 h-5 text-gray-400" />;
+    }
+  };
+
+  const getStatusBadge = () => {
+    const badges = {
+      approved: "bg-green-100 text-green-700",
+      uploaded: "bg-blue-100 text-blue-700",
+      rejected: "bg-red-100 text-red-700",
+      pending: "bg-gray-100 text-gray-700",
+    };
+
+    const labels = {
+      approved: "Aprovado",
+      uploaded: "Em análise",
+      rejected: "Rejeitado",
+      pending: "Pendente",
+    };
+
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-xs ${badges[document.status]}`}
+      >
+        {labels[document.status]}
+      </span>
+    );
+  };
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          {getStatusIcon()}
+          <div>
+            <p className="text-gray-900">{document.name}</p>
+            {document.uploadDate && (
+              <p className="text-xs text-gray-500">
+                Enviado em {document.uploadDate}
+              </p>
+            )}
+          </div>
+        </div>
+        {getStatusBadge()}
+      </div>
+
+      {isUploading && selectedFile ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              <span className="text-sm text-blue-900">{selectedFile.name}</span>
+            </div>
+            <button
+              onClick={onCancelUpload}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <button
+            onClick={onUpload}
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            Confirmar Upload
+          </button>
+        </div>
+      ) : document.status === "pending" ? (
+        <label className="block">
+          <input
+            type="file"
+            className="hidden"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onFileSelect(file);
+            }}
+          />
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition">
+            <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-600">
+              Clique para fazer upload ou arraste o arquivo
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              PDF, JPG ou PNG (máx. 5MB)
+            </p>
+          </div>
+        </label>
+      ) : (
+        <div className="flex gap-2">
+          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+            <Eye className="w-4 h-4" />
+            <span className="text-sm">Visualizar</span>
+          </button>
+          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+            <Download className="w-4 h-4" />
+            <span className="text-sm">Download</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CandidateCard({ candidate }: { candidate: any }) {
+  const progress = Math.round(
+    (candidate.docsApproved / candidate.docsTotal) * 100
+  );
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-lg">
+            {candidate.name.charAt(0)}
+          </div>
+          <div>
+            <h3 className="text-lg text-gray-900">{candidate.name}</h3>
+            <p className="text-sm text-gray-600">{candidate.position}</p>
+            <p className="text-xs text-gray-500">
+              {candidate.department} • Início: {candidate.startDate}
+            </p>
+          </div>
+        </div>
+        <span
+          className={`px-3 py-1 rounded-full text-xs ${
+            candidate.status === "approved"
+              ? "bg-green-100 text-green-700"
+              : candidate.status === "review"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-orange-100 text-orange-700"
+          }`}
+        >
+          {candidate.status === "approved"
+            ? "Aprovado"
+            : candidate.status === "review"
+              ? "Em análise"
+              : "Ação necessária"}
+        </span>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Documentos</span>
+          <span className="text-gray-900">
+            {candidate.docsApproved}/{candidate.docsTotal}
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className={`h-2 rounded-full ${
+              progress === 100 ? "bg-green-500" : "bg-blue-500"
+            }`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          Revisar Documentos
+        </button>
+        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          <Eye className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+===========================================
+ARQUIVO 8: src/app/components/pages/Onboarding.tsx
+===========================================
+
+import { useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import {
+  CheckCircle,
+  Circle,
+  Clock,
+  Play,
+  BookOpen,
+  Users,
+  Video,
+  FileText,
+  Award,
+  Target,
+  TrendingUp,
+} from "lucide-react";
+
+interface OnboardingTask {
+  id: string;
+  title: string;
+  description: string;
+  type: "video" | "reading" | "task" | "meeting";
+  duration: string;
+  completed: boolean;
+  current?: boolean;
+}
+
+interface OnboardingTrack {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  tasks: OnboardingTask[];
+}
+
+export function Onboarding() {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl text-gray-900 mb-2">Gestão de Onboarding</h1>
+        <p className="text-gray-600">
+          {user.role === "rh" || user.role === "gestor"
+            ? "Acompanhe e gerencie o processo de integração"
+            : "Sua trilha de integração e desenvolvimento"}
+        </p>
+      </div>
+
+      {user.role === "colaborador" && <ColaboradorOnboardingView />}
+      {user.role === "rh" && <RHOnboardingView />}
+      {user.role === "gestor" && <GestorOnboardingView />}
+    </div>
+  );
+}
+
+function ColaboradorOnboardingView() {
+  const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
+  const [tracks] = useState<OnboardingTrack[]>([
+    {
+      id: "1",
+      title: "Integração Inicial",
+      description: "Conhecendo a empresa e a cultura",
+      progress: 80,
+      tasks: [
+        {
+          id: "1-1",
+          title: "Vídeo de Boas-vindas",
+          description: "Mensagem do CEO e visão geral da empresa",
+          type: "video",
+          duration: "15 min",
+          completed: true,
+        },
+        {
+          id: "1-2",
+          title: "História e Cultura",
+          description: "Conheça nossa história, missão e valores",
+          type: "reading",
+          duration: "20 min",
+          completed: true,
+        },
+        {
+          id: "1-3",
+          title: "Tour Virtual",
+          description: "Conheça as instalações e departamentos",
+          type: "video",
+          duration: "10 min",
+          completed: true,
+        },
+        {
+          id: "1-4",
+          title: "Código de Conduta",
+          description: "Leia e assine o código de conduta",
+          type: "task",
+          duration: "30 min",
+          completed: true,
+          current: true,
+        },
+        {
+          id: "1-5",
+          title: "Políticas da Empresa",
+          description: "Conheça as principais políticas internas",
+          type: "reading",
+          duration: "25 min",
+          completed: false,
+        },
+      ],
+    },
+    {
+      id: "2",
+      title: "Conhecendo a Equipe",
+      description: "Integração com colegas e gestores",
+      progress: 60,
+      tasks: [
+        {
+          id: "2-1",
+          title: "Reunião com Gestor",
+          description: "Alinhamento de expectativas e objetivos",
+          type: "meeting",
+          duration: "45 min",
+          completed: true,
+        },
+        {
+          id: "2-2",
+          title: "Apresentação para a Equipe",
+          description: "Conheça seus colegas de trabalho",
+          type: "meeting",
+          duration: "30 min",
+          completed: true,
+        },
+        {
+          id: "2-3",
+          title: "Coffee Break Virtual",
+          description: "Momento informal com a equipe",
+          type: "meeting",
+          duration: "30 min",
+          completed: true,
+          current: true,
+        },
+        {
+          id: "2-4",
+          title: "Entrevistas 1:1",
+          description: "Converse individualmente com membros-chave",
+          type: "meeting",
+          duration: "2 horas",
+          completed: false,
+        },
+        {
+          id: "2-5",
+          title: "Mapeamento de Stakeholders",
+          description: "Identifique pessoas importantes para seu trabalho",
+          type: "task",
+          duration: "20 min",
+          completed: false,
+        },
+      ],
+    },
+    {
+      id: "3",
+      title: "Capacitação Técnica",
+      description: "Treinamentos e ferramentas",
+      progress: 40,
+      tasks: [
+        {
+          id: "3-1",
+          title: "Ferramentas de Trabalho",
+          description: "Configuração e uso das ferramentas principais",
+          type: "video",
+          duration: "40 min",
+          completed: true,
+        },
+        {
+          id: "3-2",
+          title: "Processos e Metodologias",
+          description: "Como trabalhamos e nossos frameworks",
+          type: "reading",
+          duration: "35 min",
+          completed: true,
+        },
+        {
+          id: "3-3",
+          title: "Segurança da Informação",
+          description: "Boas práticas e políticas de segurança",
+          type: "video",
+          duration: "25 min",
+          completed: false,
+          current: true,
+        },
+        {
+          id: "3-4",
+          title: "Treinamento Específico",
+          description: "Capacitação técnica para sua função",
+          type: "video",
+          duration: "2 horas",
+          completed: false,
+        },
+        {
+          id: "3-5",
+          title: "Certificação Interna",
+          description: "Avaliação de conhecimentos adquiridos",
+          type: "task",
+          duration: "45 min",
+          completed: false,
+        },
+      ],
+    },
+    {
+      id: "4",
+      title: "Primeiro Projeto",
+      description: "Mãos à obra!",
+      progress: 0,
+      tasks: [
+        {
+          id: "4-1",
+          title: "Briefing do Projeto",
+          description: "Entenda o contexto e objetivos",
+          type: "meeting",
+          duration: "1 hora",
+          completed: false,
+        },
+        {
+          id: "4-2",
+          title: "Planejamento",
+          description: "Crie seu plano de ação",
+          type: "task",
+          duration: "3 horas",
+          completed: false,
+        },
+        {
+          id: "4-3",
+          title: "Execução",
+          description: "Coloque em prática o que aprendeu",
+          type: "task",
+          duration: "2 semanas",
+          completed: false,
+        },
+        {
+          id: "4-4",
+          title: "Apresentação de Resultados",
+          description: "Compartilhe seu trabalho com a equipe",
+          type: "meeting",
+          duration: "45 min",
+          completed: false,
+        },
+        {
+          id: "4-5",
+          title: "Feedback e Ajustes",
+          description: "Receba feedback e implemente melhorias",
+          type: "meeting",
+          duration: "30 min",
+          completed: false,
+        },
+      ],
+    },
+  ]);
+
+  const overallProgress = Math.round(
+    tracks.reduce((acc, track) => acc + track.progress, 0) / tracks.length
+  );
+
+  const completedTasks = tracks.reduce(
+    (acc, track) => acc + track.tasks.filter((t) => t.completed).length,
+    0
+  );
+  const totalTasks = tracks.reduce((acc, track) => acc + track.tasks.length, 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Header de Progresso */}
+      <div className="bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl shadow-lg p-6 text-white">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl mb-2">Sua Jornada de Integração</h2>
+            <p className="text-purple-100">
+              {completedTasks} de {totalTasks} atividades concluídas
+            </p>
+          </div>
+          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
+            <span className="text-3xl">{overallProgress}%</span>
+          </div>
+        </div>
+        <div className="w-full bg-purple-400/50 rounded-full h-3">
+          <div
+            className="bg-white h-3 rounded-full transition-all duration-500"
+            style={{ width: `${overallProgress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Trilhas de Onboarding */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {tracks.map((track) => (
+          <div
+            key={track.id}
+            className="bg-white rounded-xl shadow-sm p-6 cursor-pointer hover:shadow-md transition"
+            onClick={() =>
+              setSelectedTrack(selectedTrack === track.id ? null : track.id)
+            }
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h3 className="text-lg text-gray-900 mb-2">{track.title}</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  {track.description}
+                </p>
+              </div>
+              {track.progress === 100 && (
+                <Award className="w-6 h-6 text-yellow-500" />
+              )}
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Progresso</span>
+                <span className="text-gray-900">{track.progress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full ${
+                    track.progress === 100 ? "bg-green-500" : "bg-blue-500"
+                  }`}
+                  style={{ width: `${track.progress}%` }}
+                />
+              </div>
+            </div>
+
+            {selectedTrack === track.id && (
+              <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
+                {track.tasks.map((task) => (
+                  <TaskCard key={task.id} task={task} />
+                ))}
+              </div>
+            )}
+
+            <p className="text-xs text-gray-500 mt-4">
+              {track.tasks.filter((t) => t.completed).length} de{" "}
+              {track.tasks.length} atividades concluídas
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Conquistas */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-6">Suas Conquistas</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <AchievementBadge
+            icon={CheckCircle}
+            title="Primeiro Dia"
+            unlocked
+            color="green"
+          />
+          <AchievementBadge
+            icon={BookOpen}
+            title="Estudioso"
+            unlocked
+            color="blue"
+          />
+          <AchievementBadge
+            icon={Users}
+            title="Socializado"
+            unlocked
+            color="purple"
+          />
+          <AchievementBadge icon={Award} title="Certificado" color="gray" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RHOnboardingView() {
+  const [employees] = useState([
+    {
+      id: "1",
+      name: "João Silva",
+      position: "Desenvolvedor Frontend",
+      department: "Tecnologia",
+      startDate: "15/04/2026",
+      progress: 60,
+      currentTrack: "Capacitação Técnica",
+      daysInRole: 3,
+    },
+    {
+      id: "2",
+      name: "Maria Souza",
+      position: "Designer UX/UI",
+      department: "Produto",
+      startDate: "10/04/2026",
+      progress: 85,
+      currentTrack: "Primeiro Projeto",
+      daysInRole: 8,
+    },
+    {
+      id: "3",
+      name: "Pedro Santos",
+      position: "Analista de Dados",
+      department: "Business Intelligence",
+      startDate: "18/04/2026",
+      progress: 30,
+      currentTrack: "Integração Inicial",
+      daysInRole: 0,
+    },
+  ]);
+
+  return (
+    <div className="space-y-6">
+      {/* Métricas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <p className="text-2xl text-gray-900">15</p>
+          </div>
+          <p className="text-sm text-gray-600">Onboardings Ativos</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <p className="text-2xl text-gray-900">8</p>
+          </div>
+          <p className="text-sm text-gray-600">Concluídos (30 dias)</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-purple-600" />
+            </div>
+            <p className="text-2xl text-gray-900">94%</p>
+          </div>
+          <p className="text-sm text-gray-600">Taxa de Conclusão</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Award className="w-5 h-5 text-orange-600" />
+            </div>
+            <p className="text-2xl text-gray-900">4.8</p>
+          </div>
+          <p className="text-sm text-gray-600">Avaliação Média</p>
+        </div>
+      </div>
+
+      {/* Lista de Colaboradores */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-6">
+          Colaboradores em Onboarding
+        </h2>
+        <div className="space-y-4">
+          {employees.map((employee) => (
+            <EmployeeOnboardingCard key={employee.id} employee={employee} />
+          ))}
+        </div>
+      </div>
+
+      {/* Gerenciamento de Trilhas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl text-gray-900 mb-4">Trilhas Disponíveis</h2>
+          <div className="space-y-3">
+            <TrackTemplateItem
+              title="Integração Padrão"
+              employees={12}
+              duration="30 dias"
+            />
+            <TrackTemplateItem
+              title="Liderança"
+              employees={3}
+              duration="45 dias"
+            />
+            <TrackTemplateItem
+              title="Técnica Avançada"
+              employees={5}
+              duration="60 dias"
+            />
+          </div>
+          <button className="w-full mt-4 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition">
+            + Criar Nova Trilha
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl text-gray-900 mb-4">
+            Performance por Departamento
+          </h2>
+          <div className="space-y-4">
+            <DepartmentPerformance
+              department="Tecnologia"
+              progress={92}
+              count={8}
+            />
+            <DepartmentPerformance
+              department="Produto"
+              progress={88}
+              count={4}
+            />
+            <DepartmentPerformance department="Vendas" progress={95} count={3} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GestorOnboardingView() {
+  const [teamMembers] = useState([
+    {
+      id: "1",
+      name: "João Silva",
+      position: "Desenvolvedor Frontend",
+      startDate: "15/04/2026",
+      progress: 60,
+      daysInRole: 3,
+      nextMeeting: "Amanhã às 10:00",
+    },
+    {
+      id: "2",
+      name: "Maria Souza",
+      position: "Designer UX/UI",
+      startDate: "10/04/2026",
+      progress: 85,
+      daysInRole: 8,
+      nextMeeting: "Hoje às 15:00",
+    },
+  ]);
+
+  return (
+    <div className="space-y-6">
+      {/* Visão Geral da Equipe */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <p className="text-2xl text-gray-900">2</p>
+          </div>
+          <p className="text-sm text-gray-600">Novos Membros</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-green-600" />
+            </div>
+            <p className="text-2xl text-gray-900">73%</p>
+          </div>
+          <p className="text-sm text-gray-600">Progresso Médio</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Target className="w-5 h-5 text-purple-600" />
+            </div>
+            <p className="text-2xl text-gray-900">3</p>
+          </div>
+          <p className="text-sm text-gray-600">Ações Pendentes</p>
+        </div>
+      </div>
+
+      {/* Membros da Equipe */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h2 className="text-xl text-gray-900 mb-6">Acompanhamento Individual</h2>
+        <div className="space-y-4">
+          {teamMembers.map((member) => (
+            <GestorTeamMemberCard key={member.id} member={member} />
+          ))}
+        </div>
+      </div>
+
+      {/* Próximas Ações */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl text-gray-900 mb-4">Próximas Reuniões</h2>
+          <div className="space-y-3">
+            <MeetingItem
+              name="Maria Souza"
+              type="1:1 de acompanhamento"
+              time="Hoje às 15:00"
+            />
+            <MeetingItem
+              name="João Silva"
+              type="Feedback semanal"
+              time="Amanhã às 10:00"
+            />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl text-gray-900 mb-4">Checklist do Gestor</h2>
+          <div className="space-y-3">
+            <ChecklistItem
+              task="Revisar progresso semanal"
+              completed={false}
+            />
+            <ChecklistItem
+              task="Preparar feedback para Maria"
+              completed={true}
+            />
+            <ChecklistItem
+              task="Definir primeiro projeto do João"
+              completed={false}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Componentes auxiliares
+function TaskCard({ task }: { task: OnboardingTask }) {
+  const getTaskIcon = () => {
+    switch (task.type) {
+      case "video":
+        return <Video className="w-4 h-4" />;
+      case "reading":
+        return <BookOpen className="w-4 h-4" />;
+      case "meeting":
+        return <Users className="w-4 h-4" />;
+      default:
+        return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  return (
+    <div
+      className={`flex items-start gap-3 p-3 rounded-lg ${
+        task.completed
+          ? "bg-green-50"
+          : task.current
+            ? "bg-blue-50 border-2 border-blue-200"
+            : "bg-gray-50"
+      }`}
+    >
+      <div className="mt-1">
+        {task.completed ? (
+          <CheckCircle className="w-5 h-5 text-green-600" />
+        ) : task.current ? (
+          <Play className="w-5 h-5 text-blue-600" />
+        ) : (
+          <Circle className="w-5 h-5 text-gray-400" />
+        )}
+      </div>
+      <div className="flex-1">
+        <div className="flex items-start justify-between mb-1">
+          <p
+            className={`text-sm ${
+              task.completed ? "text-green-900" : "text-gray-900"
+            }`}
+          >
+            {task.title}
+          </p>
+          <div className="flex items-center gap-1 text-gray-500">
+            {getTaskIcon()}
+            <span className="text-xs">{task.duration}</span>
+          </div>
+        </div>
+        <p className="text-xs text-gray-600">{task.description}</p>
+        {task.current && !task.completed && (
+          <button className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition">
+            Começar Agora
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AchievementBadge({
+  icon: Icon,
+  title,
+  unlocked = false,
+  color,
+}: {
+  icon: any;
+  title: string;
+  unlocked?: boolean;
+  color: string;
+}) {
+  const colorClasses = {
+    green: "bg-green-100 text-green-600",
+    blue: "bg-blue-100 text-blue-600",
+    purple: "bg-purple-100 text-purple-600",
+    gray: "bg-gray-100 text-gray-400",
+  };
+
+  return (
+    <div
+      className={`flex flex-col items-center p-4 rounded-lg ${
+        unlocked ? "opacity-100" : "opacity-50"
+      }`}
+    >
+      <div
+        className={`w-16 h-16 rounded-full flex items-center justify-center mb-2 ${colorClasses[color as keyof typeof colorClasses]}`}
+      >
+        <Icon className="w-8 h-8" />
+      </div>
+      <p className="text-sm text-gray-900 text-center">{title}</p>
+      {unlocked && (
+        <p className="text-xs text-green-600 mt-1">Desbloqueado!</p>
+      )}
+    </div>
+  );
+}
+
+function EmployeeOnboardingCard({ employee }: { employee: any }) {
+  return (
+    <div className="border border-gray-200 rounded-lg p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-lg">
+            {employee.name.charAt(0)}
+          </div>
+          <div>
+            <h3 className="text-lg text-gray-900">{employee.name}</h3>
+            <p className="text-sm text-gray-600">{employee.position}</p>
+            <p className="text-xs text-gray-500">
+              {employee.department} • {employee.daysInRole} dias no cargo
+            </p>
+          </div>
+        </div>
+        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+          {employee.currentTrack}
+        </span>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Progresso Geral</span>
+          <span className="text-gray-900">{employee.progress}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-blue-500 h-2 rounded-full"
+            style={{ width: `${employee.progress}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          Ver Detalhes
+        </button>
+        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          <Clock className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TrackTemplateItem({
+  title,
+  employees,
+  duration,
+}: {
+  title: string;
+  employees: number;
+  duration: string;
+}) {
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div>
+        <p className="text-sm text-gray-900">{title}</p>
+        <p className="text-xs text-gray-600">
+          {employees} colaboradores • {duration}
+        </p>
+      </div>
+      <button className="text-blue-600 hover:text-blue-700">Editar</button>
+    </div>
+  );
+}
+
+function DepartmentPerformance({
+  department,
+  progress,
+  count,
+}: {
+  department: string;
+  progress: number;
+  count: number;
+}) {
+  return (
+    <div>
+      <div className="flex justify-between mb-2">
+        <span className="text-sm text-gray-700">{department}</span>
+        <span className="text-sm text-gray-900">{progress}%</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+        <div
+          className="bg-green-500 h-2 rounded-full"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <p className="text-xs text-gray-500">{count} colaboradores ativos</p>
+    </div>
+  );
+}
+
+function GestorTeamMemberCard({ member }: { member: any }) {
+  return (
+    <div className="border border-gray-200 rounded-lg p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white text-lg">
+            {member.name.charAt(0)}
+          </div>
+          <div>
+            <h3 className="text-lg text-gray-900">{member.name}</h3>
+            <p className="text-sm text-gray-600">{member.position}</p>
+            <p className="text-xs text-gray-500">
+              {member.daysInRole} dias • Próxima reunião: {member.nextMeeting}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Progresso do onboarding</span>
+          <span className="text-gray-900">{member.progress}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-purple-500 h-2 rounded-full"
+            style={{ width: `${member.progress}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+          Dar Feedback
+        </button>
+        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          Ver Progresso
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MeetingItem({
+  name,
+  type,
+  time,
+}: {
+  name: string;
+  type: string;
+  time: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+        <Users className="w-5 h-5 text-purple-600" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm text-gray-900">{name}</p>
+        <p className="text-xs text-gray-600">{type}</p>
+      </div>
+      <span className="text-xs text-gray-500">{time}</span>
+    </div>
+  );
+}
+
+function ChecklistItem({
+  task,
+  completed,
+}: {
+  task: string;
+  completed: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+      <div
+        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+          completed
+            ? "bg-green-500 border-green-500"
+            : "border-gray-300"
+        }`}
+      >
+        {completed && <CheckCircle className="w-4 h-4 text-white" />}
+      </div>
+      <p
+        className={`text-sm flex-1 ${
+          completed ? "text-gray-500 line-through" : "text-gray-900"
+        }`}
+      >
+        {task}
+      </p>
+    </div>
+  );
+}
+
+===========================================
+ARQUIVO 9: src/app/components/pages/Comunicacao.tsx
+===========================================
+
+import { useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Send,
+  Image,
+  Smile,
+  MoreHorizontal,
+  Pin,
+  TrendingUp,
+  Bell,
+  Filter,
+  Search,
+  Paperclip,
+  MoreVertical,
+  X,
+} from "lucide-react";
+
+interface Post {
+  id: string;
+  author: {
+    name: string;
+    role: string;
+    avatar?: string;
+  };
+  content: string;
+  image?: string;
+  timestamp: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  liked?: boolean;
+  pinned?: boolean;
+  category?: string;
+}
+
+interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: string;
+}
+
+interface ChatUser {
+  id: string;
+  name: string;
+  role: string;
+  online: boolean;
+  unreadCount?: number;
+}
+
+export function Comunicacao() {
+  const { user } = useAuth();
+  const [showChat, setShowChat] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([
+    {
+      id: "1",
+      author: {
+        name: "RH TeamHub",
+        role: "Recursos Humanos",
+      },
+      content:
+        "🎉 Bem-vindos aos novos colaboradores que iniciaram esta semana! Estamos muito felizes em tê-los conosco. Não hesitem em compartilhar suas primeiras impressões e experiências aqui!",
+      timestamp: "Há 2 horas",
+      likes: 24,
+      comments: 8,
+      shares: 3,
+      pinned: true,
+      category: "Anúncio",
+    },
+    {
+      id: "2",
+      author: {
+        name: "Carlos Oliveira",
+        role: "Gestor de Tecnologia",
+      },
+      content:
+        "Equipe, estou muito orgulhoso do trabalho que fizemos neste sprint! Conseguimos entregar todas as features planejadas com qualidade excepcional. Parabéns a todos! 🚀",
+      timestamp: "Há 4 horas",
+      likes: 42,
+      comments: 15,
+      shares: 5,
+      category: "Reconhecimento",
+    },
+    {
+      id: "3",
+      author: {
+        name: "Maria Santos",
+        role: "RH",
+      },
+      content:
+        "📚 Lembrete: Hoje às 15h teremos o workshop sobre Gestão de Tempo e Produtividade. A sessão será online e todos estão convidados! Link na agenda compartilhada.",
+      timestamp: "Há 6 horas",
+      likes: 18,
+      comments: 4,
+      shares: 12,
+      category: "Evento",
+    },
+    {
+      id: "4",
+      author: {
+        name: "João Silva",
+        role: "Desenvolvedor Frontend",
+      },
+      content:
+        "Meu primeiro dia foi incrível! A equipe me recebeu super bem e já me sinto parte do time. Muito animado para começar a contribuir com os projetos! 💙",
+      timestamp: "Há 1 dia",
+      likes: 56,
+      comments: 23,
+      shares: 2,
+      category: "Geral",
+    },
+    {
+      id: "5",
+      author: {
+        name: "Ana Paula Costa",
+        role: "Desenvolvedora Backend",
+      },
+      content:
+        "Alguém tem dicas de bons restaurantes perto do escritório? Estou nova na região e procurando opções para o almoço! 🍽️",
+      timestamp: "Há 1 dia",
+      likes: 12,
+      comments: 18,
+      shares: 0,
+      category: "Geral",
+    },
+  ]);
+
+  const [newPostContent, setNewPostContent] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("Todos");
+
+  const handleLike = (postId: string) => {
+    setPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              liked: !post.liked,
+              likes: post.liked ? post.likes - 1 : post.likes + 1,
+            }
+          : post
+      )
+    );
+  };
+
+  const handleNewPost = () => {
+    if (!newPostContent.trim() || !user) return;
+
+    const newPost: Post = {
+      id: Date.now().toString(),
+      author: {
+        name: user.name,
+        role:
+          user.role === "rh"
+            ? "RH"
+            : user.role === "gestor"
+              ? "Gestor"
+              : "Colaborador",
+      },
+      content: newPostContent,
+      timestamp: "Agora",
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      category: "Geral",
+    };
+
+    setPosts([newPost, ...posts]);
+    setNewPostContent("");
+  };
+
+  const filters = ["Todos", "Anúncio", "Reconhecimento", "Evento", "Geral"];
+  const filteredPosts =
+    selectedFilter === "Todos"
+      ? posts
+      : posts.filter((post) => post.category === selectedFilter);
+
+  if (!user) return null;
+
+  return (
+    <div className="p-8">
+      {/* Botão de Chat Flutuante */}
+      {!showChat && (
+        <button
+          onClick={() => setShowChat(true)}
+          className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-full shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center z-50"
+        >
+          <MessageCircle className="w-7 h-7" />
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs">
+            3
+          </span>
+        </button>
+      )}
+
+      {/* Chat Modal */}
+      {showChat && <ChatPanel onClose={() => setShowChat(false)} />}
+
+      <div className="mb-8">
+        <h1 className="text-3xl text-gray-900 mb-2">Comunicação Interna</h1>
+        <p className="text-gray-600">
+          Conecte-se com seus colegas e fique por dentro das novidades
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Feed Principal */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Criar Post */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-lg shrink-0">
+                {user.name.charAt(0)}
+              </div>
+              <div className="flex-1">
+                <textarea
+                  value={newPostContent}
+                  onChange={(e) => setNewPostContent(e.target.value)}
+                  placeholder="Compartilhe algo com a equipe..."
+                  className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  rows={3}
+                />
+                <div className="flex items-center justify-between mt-3">
+                  <div className="flex gap-2">
+                    <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                      <Image className="w-5 h-5 text-gray-600" />
+                    </button>
+                    <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                      <Smile className="w-5 h-5 text-gray-600" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleNewPost}
+                    disabled={!newPostContent.trim()}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Send className="w-4 h-4" />
+                    Publicar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Filtros */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center gap-3 overflow-x-auto">
+              <Filter className="w-5 h-5 text-gray-600 shrink-0" />
+              {filters.map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setSelectedFilter(filter)}
+                  className={`px-4 py-2 rounded-lg whitespace-nowrap transition ${
+                    selectedFilter === filter
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Posts */}
+          <div className="space-y-6">
+            {filteredPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onLike={() => handleLike(post.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Destaques */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-5 h-5 text-orange-600" />
+              <h2 className="text-lg text-gray-900">Em Alta</h2>
+            </div>
+            <div className="space-y-3">
+              <TrendingItem
+                title="Nova política de home office"
+                engagement="127 interações"
+              />
+              <TrendingItem
+                title="Resultados do trimestre"
+                engagement="98 interações"
+              />
+              <TrendingItem
+                title="Evento de integração"
+                engagement="84 interações"
+              />
+            </div>
+          </div>
+
+          {/* Próximos Eventos */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Bell className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg text-gray-900">Próximos Eventos</h2>
+            </div>
+            <div className="space-y-3">
+              <EventItem
+                title="Workshop de Produtividade"
+                date="Hoje às 15:00"
+                color="blue"
+              />
+              <EventItem
+                title="Happy Hour da Equipe"
+                date="Sexta às 18:00"
+                color="purple"
+              />
+              <EventItem
+                title="Palestra sobre Inovação"
+                date="22/04 às 10:00"
+                color="green"
+              />
+            </div>
+          </div>
+
+          {/* Aniversariantes */}
+          <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl shadow-sm p-6 border border-pink-100">
+            <h2 className="text-lg text-gray-900 mb-4">🎂 Aniversariantes</h2>
+            <div className="space-y-3">
+              <BirthdayItem name="Juliana Martins" date="Hoje" />
+              <BirthdayItem name="Roberto Lima" date="Amanhã" />
+            </div>
+          </div>
+
+          {/* Conquistas Recentes */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg text-gray-900 mb-4">🏆 Conquistas</h2>
+            <div className="space-y-3">
+              <AchievementItem
+                name="Pedro Santos"
+                achievement="Completou onboarding"
+              />
+              <AchievementItem
+                name="Ana Costa"
+                achievement="3 anos de empresa"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PostCard({ post, onLike }: { post: Post; onLike: () => void }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6">
+      {/* Header do Post */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-lg shrink-0">
+            {post.author.name.charAt(0)}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-gray-900">{post.author.name}</h3>
+              {post.pinned && (
+                <Pin className="w-4 h-4 text-blue-600" fill="currentColor" />
+              )}
+            </div>
+            <p className="text-sm text-gray-600">{post.author.role}</p>
+            <p className="text-xs text-gray-500">{post.timestamp}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {post.category && (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+              {post.category}
+            </span>
+          )}
+          <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+            <MoreHorizontal className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+      </div>
+
+      {/* Conteúdo */}
+      <div className="mb-4">
+        <p className="text-gray-800 whitespace-pre-wrap">{post.content}</p>
+        {post.image && (
+          <img
+            src={post.image}
+            alt="Post"
+            className="mt-4 rounded-lg w-full object-cover"
+          />
+        )}
+      </div>
+
+      {/* Estatísticas */}
+      <div className="flex items-center justify-between py-3 border-t border-b border-gray-200 text-sm text-gray-600">
+        <span>{post.likes} curtidas</span>
+        <div className="flex gap-4">
+          <span>{post.comments} comentários</span>
+          <span>{post.shares} compartilhamentos</span>
+        </div>
+      </div>
+
+      {/* Ações */}
+      <div className="flex items-center gap-2 pt-3">
+        <button
+          onClick={onLike}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition ${
+            post.liked
+              ? "text-red-600 bg-red-50"
+              : "text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          <Heart
+            className="w-5 h-5"
+            fill={post.liked ? "currentColor" : "none"}
+          />
+          <span className="text-sm">Curtir</span>
+        </button>
+        <button className="flex-1 flex items-center justify-center gap-2 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition">
+          <MessageCircle className="w-5 h-5" />
+          <span className="text-sm">Comentar</span>
+        </button>
+        <button className="flex-1 flex items-center justify-center gap-2 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition">
+          <Share2 className="w-5 h-5" />
+          <span className="text-sm">Compartilhar</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TrendingItem({
+  title,
+  engagement,
+}: {
+  title: string;
+  engagement: string;
+}) {
+  return (
+    <div className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer">
+      <p className="text-sm text-gray-900 mb-1">{title}</p>
+      <p className="text-xs text-gray-600">{engagement}</p>
+    </div>
+  );
+}
+
+function EventItem({
+  title,
+  date,
+  color,
+}: {
+  title: string;
+  date: string;
+  color: string;
+}) {
+  const colorClasses = {
+    blue: "bg-blue-100 text-blue-700",
+    purple: "bg-purple-100 text-purple-700",
+    green: "bg-green-100 text-green-700",
+  };
+
+  return (
+    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+      <div
+        className={`w-2 h-2 rounded-full mt-2 ${colorClasses[color as keyof typeof colorClasses]}`}
+      />
+      <div className="flex-1">
+        <p className="text-sm text-gray-900">{title}</p>
+        <p className="text-xs text-gray-600">{date}</p>
+      </div>
+    </div>
+  );
+}
+
+function BirthdayItem({ name, date }: { name: string; date: string }) {
+  return (
+    <div className="flex items-center justify-between p-3 bg-white rounded-lg">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full flex items-center justify-center text-white">
+          {name.charAt(0)}
+        </div>
+        <div>
+          <p className="text-sm text-gray-900">{name}</p>
+          <p className="text-xs text-gray-600">{date}</p>
+        </div>
+      </div>
+      <button className="text-xs bg-pink-600 text-white px-3 py-1 rounded-full hover:bg-pink-700 transition">
+        Parabenizar
+      </button>
+    </div>
+  );
+}
+
+function AchievementItem({
+  name,
+  achievement,
+}: {
+  name: string;
+  achievement: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+      <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center shrink-0">
+        🏆
+      </div>
+      <div>
+        <p className="text-sm text-gray-900">{name}</p>
+        <p className="text-xs text-gray-600">{achievement}</p>
+      </div>
+    </div>
+  );
+}
+
+// Componente de Chat
+function ChatPanel({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [messageInput, setMessageInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [users] = useState<ChatUser[]>([
+    {
+      id: "2",
+      name: "Maria Santos",
+      role: "RH",
+      online: true,
+      unreadCount: 2,
+    },
+    {
+      id: "3",
+      name: "Carlos Oliveira",
+      role: "Gestor de Tecnologia",
+      online: true,
+    },
+    {
+      id: "4",
+      name: "João Silva",
+      role: "Desenvolvedor Frontend",
+      online: true,
+      unreadCount: 1,
+    },
+    {
+      id: "5",
+      name: "Ana Paula Costa",
+      role: "Desenvolvedora Backend",
+      online: false,
+    },
+    {
+      id: "6",
+      name: "Juliana Martins",
+      role: "Analista de Marketing",
+      online: true,
+    },
+    {
+      id: "7",
+      name: "Pedro Santos",
+      role: "Analista de Dados",
+      online: false,
+    },
+  ]);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "1",
+      senderId: "2",
+      senderName: "Maria Santos",
+      content: "Oi! Não esqueça de preencher a pesquisa de clima até amanhã 😊",
+      timestamp: "10:30",
+    },
+    {
+      id: "2",
+      senderId: "1",
+      senderName: "Você",
+      content: "Olá Maria! Pode deixar, vou preencher hoje mesmo!",
+      timestamp: "10:32",
+    },
+    {
+      id: "3",
+      senderId: "2",
+      senderName: "Maria Santos",
+      content: "Perfeito! Qualquer dúvida estou à disposição.",
+      timestamp: "10:33",
+    },
+    {
+      id: "4",
+      senderId: "4",
+      senderName: "João Silva",
+      content: "Pessoal, alguém sabe onde fica a sala de reunião 3?",
+      timestamp: "11:15",
+    },
+    {
+      id: "5",
+      senderId: "1",
+      senderName: "Você",
+      content: "Fica no segundo andar, ao lado da copa!",
+      timestamp: "11:16",
+    },
+    {
+      id: "6",
+      senderId: "4",
+      senderName: "João Silva",
+      content: "Obrigado! 🙏",
+      timestamp: "11:17",
+    },
+  ]);
+
+  const handleSendMessage = () => {
+    if (!messageInput.trim() || !user) return;
+
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      senderId: user.id,
+      senderName: "Você",
+      content: messageInput,
+      timestamp: new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setMessages([...messages, newMessage]);
+    setMessageInput("");
+  };
+
+  const filteredUsers = users.filter((u) =>
+    u.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const selectedUserData = users.find((u) => u.id === selectedUser);
+  const userMessages = selectedUser
+    ? messages.filter(
+        (m) => m.senderId === selectedUser || m.senderId === user?.id
+      )
+    : messages;
+
+  const totalUnread = users.reduce((acc, u) => acc + (u.unreadCount || 0), 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[700px] flex overflow-hidden">
+        {/* Sidebar - Lista de Conversas */}
+        <div className="w-80 border-r border-gray-200 flex flex-col bg-gray-50">
+          {/* Header */}
+          <div className="p-4 bg-white border-b border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl text-gray-900">Chat</h2>
+                <p className="text-xs text-gray-500">
+                  {totalUnread} mensagens não lidas
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar pessoas..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Lista de Conversas */}
+          <div className="flex-1 overflow-y-auto">
+            {filteredUsers.map((chatUser) => (
+              <button
+                key={chatUser.id}
+                onClick={() => setSelectedUser(chatUser.id)}
+                className={`w-full flex items-center gap-3 p-4 hover:bg-white transition border-b border-gray-100 ${
+                  selectedUser === chatUser.id ? "bg-white" : ""
+                }`}
+              >
+                <div className="relative">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white shrink-0">
+                    {chatUser.name.charAt(0)}
+                  </div>
+                  {chatUser.online && (
+                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" />
+                  )}
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm text-gray-900 truncate font-medium">
+                      {chatUser.name}
+                    </p>
+                    {chatUser.unreadCount && chatUser.unreadCount > 0 && (
+                      <span className="ml-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shrink-0">
+                        {chatUser.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 truncate">
+                    {chatUser.role}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Área de Chat */}
+        <div className="flex-1 flex flex-col bg-white">
+          {/* Header do Chat */}
+          {selectedUserData ? (
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white">
+                    {selectedUserData.name.charAt(0)}
+                  </div>
+                  {selectedUserData.online && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-gray-900 font-medium">{selectedUserData.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {selectedUserData.online ? "🟢 Online" : "⚪ Offline"}
+                  </p>
+                </div>
+              </div>
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                <MoreVertical className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                  <MessageCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-gray-900 font-medium">Chat TeamHub</p>
+                  <p className="text-xs text-gray-600">
+                    Selecione uma conversa para começar
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mensagens */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white">
+            {!selectedUser ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                <MessageCircle className="w-20 h-20 mb-4 text-gray-300" />
+                <p className="text-lg text-gray-500">Selecione uma conversa</p>
+                <p className="text-sm text-gray-400">
+                  Escolha um contato para começar a conversar
+                </p>
+              </div>
+            ) : userMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                <MessageCircle className="w-20 h-20 mb-4 text-gray-300" />
+                <p className="text-lg text-gray-500">Nenhuma mensagem ainda</p>
+                <p className="text-sm text-gray-400">
+                  Seja o primeiro a iniciar a conversa!
+                </p>
+              </div>
+            ) : (
+              userMessages.map((message) => {
+                const isOwn = message.senderId === user?.id;
+                return (
+                  <div
+                    key={message.id}
+                    className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                  >
+                    <div className={`max-w-md ${isOwn ? "order-2" : "order-1"}`}>
+                      {!isOwn && (
+                        <p className="text-xs text-gray-500 mb-1 ml-3">
+                          {message.senderName}
+                        </p>
+                      )}
+                      <div
+                        className={`rounded-2xl px-5 py-3 ${
+                          isOwn
+                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30"
+                            : "bg-white text-gray-900 shadow-md border border-gray-100"
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed">{message.content}</p>
+                        <p
+                          className={`text-xs mt-1.5 ${
+                            isOwn ? "text-white/80" : "text-gray-500"
+                          }`}
+                        >
+                          {message.timestamp}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Input de Mensagem */}
+          <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="flex items-end gap-3">
+              <button className="p-2.5 hover:bg-gray-100 rounded-lg transition">
+                <Paperclip className="w-5 h-5 text-gray-600" />
+              </button>
+              <button className="p-2.5 hover:bg-gray-100 rounded-lg transition">
+                <Smile className="w-5 h-5 text-gray-600" />
+              </button>
+              <div className="flex-1 relative">
+                <textarea
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Digite sua mensagem..."
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  rows={2}
+                />
+              </div>
+              <button
+                onClick={handleSendMessage}
+                disabled={!messageInput.trim()}
+                className="p-3.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2 ml-24">
+              Pressione <kbd className="px-1.5 py-0.5 bg-gray-100 rounded border border-gray-300">Enter</kbd> para enviar • <kbd className="px-1.5 py-0.5 bg-gray-100 rounded border border-gray-300">Shift + Enter</kbd> para nova linha
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+==========================================
+FIM DO CÓDIGO FRONTEND
+Total de arquivos: 9
+==========================================
