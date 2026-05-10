@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Building2, Mail, Lock, Loader2, Users, Target, TrendingUp, Sparkles } from "lucide-react";
 
 export function Login() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -17,10 +17,17 @@ export function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(username, password);
       navigate("/");
-    } catch (err) {
-      setError("Email ou senha inválidos");
+    } catch (err: any) {
+      if (err.status === 403) {
+        alert("Sua conta está inativa/bloqueada. Por favor, entre em contato com o suporte.");
+      } else if (err.status === 401) {
+        setError("Usuário ou senha incorretos.");
+        setPassword(""); // Limpar campo de senha conforme instrução (opcional)
+      } else {
+        setError(err.message || "Erro ao realizar login. Tente novamente.");
+      }
     } finally {
       setLoading(false);
     }
@@ -132,32 +139,24 @@ export function Login() {
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="email" className="block text-gray-700 mb-2">
-                  Email
+                <label htmlFor="username" className="block text-gray-700 mb-2">
+                  Usuário (Username ou Email)
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
-                    placeholder="seu@email.com"
+                    placeholder="Seu usuário"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="password" className="block text-gray-700">
-                    Senha
-                  </label>
-                  <a href="#" className="text-sm text-purple-600 hover:text-purple-700">
-                    Esqueceu?
-                  </a>
-                </div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -194,62 +193,6 @@ export function Login() {
                 )}
               </button>
             </form>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">Contas de demonstração</span>
-              </div>
-            </div>
-
-            {/* Usuários Demo - Compacto */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("colaborador@teamhub.com");
-                  setPassword("123456");
-                }}
-                className="w-full text-left px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition border border-blue-200"
-              >
-                <p className="text-sm text-blue-900">
-                  <span className="font-medium">Colaborador</span> · colaborador@teamhub.com
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("rh@teamhub.com");
-                  setPassword("123456");
-                }}
-                className="w-full text-left px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition border border-purple-200"
-              >
-                <p className="text-sm text-purple-900">
-                  <span className="font-medium">RH</span> · rh@teamhub.com
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("gestor@teamhub.com");
-                  setPassword("123456");
-                }}
-                className="w-full text-left px-4 py-3 bg-green-50 hover:bg-green-100 rounded-lg transition border border-green-200"
-              >
-                <p className="text-sm text-green-900">
-                  <span className="font-medium">Gestor</span> · gestor@teamhub.com
-                </p>
-              </button>
-
-              <p className="text-xs text-gray-500 text-center pt-2">
-                Clique em qualquer conta para preencher automaticamente (senha: 123456)
-              </p>
-            </div>
           </div>
         </div>
       </div>

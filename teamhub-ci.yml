@@ -2,18 +2,36 @@
 #               Stage Declarations               #
 ###################################################
 stages:
-  - deploy
+  - deploy-server-1
+  - deploy-server-2
 
 ###################################################
-#           Stage: deploy                         #
+#           Stage: deploy-server-1                #
 ###################################################
-docker-deploy:
-  stage: deploy
+docker-deploy-server-1:
+  stage: deploy-server-1
+  when: manual
   only:
     - master
     - develop
   tags:
     - teamhub
+  script:
+    - docker compose up --build -d
+  environment:
+    name: production
+
+###################################################
+#           Stage: deploy-server-2                #
+###################################################
+docker-deploy-server-2:
+  stage: deploy-server-2
+  when: manual
+  only:
+    - master
+    - develop
+  tags:
+    - larissa
   script:
     - docker compose up --build -d
   environment:

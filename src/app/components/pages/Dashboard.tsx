@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { apiFetch } from "../../services/api";
 import {
   Users,
   FileCheck,
@@ -12,6 +14,30 @@ import {
 
 export function Dashboard() {
   const { user } = useAuth();
+  const [apiMessage, setApiMessage] = useState<string>("");
+
+  useEffect(() => {
+    if (!user) return;
+
+    let endpoint = "";
+    if (user.role === "rh") {
+      endpoint = "/api/dashboard/admin";
+    } else if (user.role === "gestor") {
+      endpoint = "/api/dashboard/team";
+    } else {
+      endpoint = "/api/dashboard/me";
+    }
+
+    apiFetch(endpoint)
+      .then(async (res) => {
+        if (res.ok) {
+          // Usamos .text() porque atualmente a API retorna apenas uma String simples
+          const text = await res.text();
+          setApiMessage(text);
+        }
+      })
+      .catch((err) => console.error("Erro ao buscar dados do dashboard:", err));
+  }, [user]);
 
   if (!user) return null;
 
@@ -31,6 +57,13 @@ export function Dashboard() {
           })}
         </p>
       </div>
+
+      {apiMessage && (
+        <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-blue-600" />
+          <p><strong>Mensagem do Backend:</strong> {apiMessage}</p>
+        </div>
+      )}
 
       {/* Dashboard por perfil */}
       {user.role === "colaborador" && <ColaboradorDashboard />}

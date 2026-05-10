@@ -41,7 +41,7 @@ export function RootLayout() {
       icon: UserPlus,
       label: "Admissão Digital",
       path: "/admissao",
-      roles: ["rh", "colaborador"],
+      roles: ["rh"], // Exclusivo para RH
     },
     {
       icon: GraduationCap,
@@ -92,9 +92,8 @@ export function RootLayout() {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside
-        className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col shrink-0`}
+        className={`${sidebarOpen ? "w-64" : "w-20"
+          } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col shrink-0`}
       >
         {/* Header — Logo */}
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
@@ -133,11 +132,10 @@ export function RootLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                  isActive
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${isActive
                     ? "bg-blue-50 text-blue-700"
                     : "text-gray-700 hover:bg-gray-50"
-                } ${!sidebarOpen && "justify-center"}`}
+                  } ${!sidebarOpen && "justify-center"}`}
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 {sidebarOpen && <span>{item.label}</span>}
@@ -173,9 +171,8 @@ export function RootLayout() {
                 </span>
               </div>
               <ChevronDown
-                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
-                  userMenuOpen ? "rotate-180" : ""
-                }`}
+                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""
+                  }`}
               />
             </button>
 
