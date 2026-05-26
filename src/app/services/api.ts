@@ -1,4 +1,4 @@
-const BASE_URL = 'backend-production-b3b6.up.railway.app:2630';
+const BASE_URL = 'https://backend-production-b3b6.up.railway.app';
 
 /**
  * Função wrapper para o fetch que já adiciona o token JWT nas requisições.
