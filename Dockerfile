@@ -2,14 +2,9 @@
 #  Stage 1 – Build
 # ─────────────────────────────────────────────
 FROM node:20-alpine AS builder
-
 WORKDIR /app
-
-# Instala dependências primeiro (cache layer)
 COPY package*.json ./
 RUN npm ci
-
-# Copia o restante e faz o build
 COPY . .
 RUN npm run build
 
@@ -18,8 +13,8 @@ RUN npm run build
 # ─────────────────────────────────────────────
 FROM nginx:1.27-alpine AS runner
 
-# Remove config padrão do nginx
-RUN rm /etc/nginx/conf.d/default.conf
+# Remove TUDO da pasta conf.d (evita o default.conf voltar)
+RUN rm -rf /etc/nginx/conf.d/*
 
 # Copia nossa config customizada
 COPY nginx.conf /etc/nginx/conf.d/teamhub.conf
@@ -27,6 +22,5 @@ COPY nginx.conf /etc/nginx/conf.d/teamhub.conf
 # Copia os arquivos buildados
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 80
-
+EXPOSE 2630
 CMD ["nginx", "-g", "daemon off;"]

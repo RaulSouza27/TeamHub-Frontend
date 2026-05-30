@@ -140,7 +140,7 @@ export function Login() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="username" className="block text-gray-700 mb-2">
-                  Usuário (Username ou Email)
+                  Usuário
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

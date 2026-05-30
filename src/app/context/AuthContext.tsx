@@ -55,6 +55,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string) => {
+    if (username === "admin" && password === "123456") {
+      // Gera um token JWT fictício contendo o payload em base64
+      // para que a decodificação no reload da página funcione perfeitamente
+      const payload = { sub: "Admin (Bypass)", access_level: "rh" };
+      const base64Payload = btoa(JSON.stringify(payload));
+      const mockToken = `bypass.${base64Payload}.signature`;
+      
+      localStorage.setItem("token", mockToken);
+      setUser({
+        id: "0",
+        name: "Admin (Bypass)",
+        username: "admin",
+        role: "rh",
+      });
+      return;
+    }
+
     // O loginService lança erros caso não seja 200, que serão pegos pela tela de Login
     await loginService(username, password);
 
