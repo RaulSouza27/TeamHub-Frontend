@@ -14,7 +14,7 @@ export interface ComunicadoRequest {
 }
 
 export async function getFeedService(): Promise<ComunicadoResponse[]> {
-  const response = await apiFetch("/api/comunicacao/feed");
+  const response = await apiFetch("/api/statements/feed");
   if (!response.ok) {
     throw new Error("Erro ao carregar o mural de avisos.");
   }
@@ -22,7 +22,7 @@ export async function getFeedService(): Promise<ComunicadoResponse[]> {
 }
 
 export async function postAnnouncementService(announcement: ComunicadoRequest): Promise<ComunicadoResponse> {
-  const response = await apiFetch("/api/comunicacao/global-announcements", {
+  const response = await apiFetch("/api/statements/global-announcements", {
     method: "POST",
     body: JSON.stringify(announcement),
   });
