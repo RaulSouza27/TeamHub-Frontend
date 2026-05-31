@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import {
   Upload,
@@ -6,21 +6,20 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Download,
   Eye,
   X,
+  ShieldCheck,
+  RotateCcw,
+  Image as ImageIcon
 } from "lucide-react";
-
-type DocumentStatus = "pending" | "uploaded" | "approved" | "rejected";
-
-interface Document {
-  id: string;
-  name: string;
-  status: DocumentStatus;
-  uploadDate?: string;
-  approvalDate?: string;
-  fileUrl?: string;
-}
+import {
+  submitDocumentsService,
+  getMySubmissionService,
+  getAllSubmissionsService,
+  approveSubmissionService,
+  rejectSubmissionService,
+  DocumentSubmissionResponse
+} from "../../services/admissions";
 
 export function Admissao() {
   const { user } = useAuth();
@@ -30,11 +29,11 @@ export function Admissao() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl text-gray-900 mb-2">Admissão Digital</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Admissão Digital</h1>
         <p className="text-gray-600">
           {user.role === "rh"
-            ? "Gerencie documentos e validações de novos colaboradores"
-            : "Complete seu processo de admissão"}
+            ? "Gerencie e aprove os documentos admissionais dos colaboradores"
+            : "Faça o upload dos documentos solicitados para concluir seu onboarding"}
         </p>
       </div>
 
@@ -43,537 +42,727 @@ export function Admissao() {
   );
 }
 
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 function ColaboradorAdmissaoView() {
-  const [documents, setDocuments] = useState<Document[]>([
-    {
-      id: "1",
-      name: "RG (Frente e Verso)",
-      status: "approved",
-      uploadDate: "12/04/2026",
-      approvalDate: "13/04/2026",
-    },
-    {
-      id: "2",
-      name: "CPF",
-      status: "approved",
-      uploadDate: "12/04/2026",
-      approvalDate: "13/04/2026",
-    },
-    {
-      id: "3",
-      name: "Comprovante de Residência",
-      status: "uploaded",
-      uploadDate: "15/04/2026",
-    },
-    {
-      id: "4",
-      name: "Carteira de Trabalho",
-      status: "pending",
-    },
-    {
-      id: "5",
-      name: "Título de Eleitor",
-      status: "pending",
-    },
-    {
-      id: "6",
-      name: "Certificado de Reservista",
-      status: "pending",
-    },
-    {
-      id: "7",
-      name: "Foto 3x4",
-      status: "approved",
-      uploadDate: "12/04/2026",
-      approvalDate: "13/04/2026",
-    },
-  ]);
+  const [submission, setSubmission] = useState<DocumentSubmissionResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  // Files state
+  const [rgFile, setRgFile] = useState<File | null>(null);
+  const [cpfFile, setCpfFile] = useState<File | null>(null);
+  const [workCardFile, setWorkCardFile] = useState<File | null>(null);
 
-  const handleFileSelect = (docId: string, file: File) => {
-    setSelectedFile(file);
-    setUploadingDoc(docId);
+  // Base64 state
+  const [rgBase64, setRgBase64] = useState<string>("");
+  const [cpfBase64, setCpfBase64] = useState<string>("");
+  const [workCardBase64, setWorkCardBase64] = useState<string>("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ name: string; base64: string } | null>(null);
+
+  const fetchMySubmission = async () => {
+    setLoading(true);
+    try {
+      const data = await getMySubmissionService();
+      setSubmission(data);
+      setIsReconnecting(false);
+    } catch (err) {
+      console.error("Erro ao carregar admissão:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpload = () => {
-    if (!selectedFile || !uploadingDoc) return;
+  useEffect(() => {
+    fetchMySubmission();
+  }, []);
 
-    setDocuments((prev) =>
-      prev.map((doc) =>
-        doc.id === uploadingDoc
-          ? {
-              ...doc,
-              status: "uploaded",
-              uploadDate: new Date().toLocaleDateString("pt-BR"),
-            }
-          : doc
-      )
+  const handleFileChange = async (type: "rg" | "cpf" | "workCard", file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Por favor, selecione um arquivo de imagem (PNG, JPG, JPEG).");
+      return;
+    }
+    try {
+      const base64 = await fileToBase64(file);
+      if (type === "rg") {
+        setRgFile(file);
+        setRgBase64(base64);
+      } else if (type === "cpf") {
+        setCpfFile(file);
+        setCpfBase64(base64);
+      } else {
+        setWorkCardFile(file);
+        setWorkCardBase64(base64);
+      }
+    } catch (err) {
+      alert("Erro ao processar imagem: " + err);
+    }
+  };
+
+  const handleRemoveFile = (type: "rg" | "cpf" | "workCard") => {
+    if (type === "rg") {
+      setRgFile(null);
+      setRgBase64("");
+    } else if (type === "cpf") {
+      setCpfFile(null);
+      setCpfBase64("");
+    } else {
+      setWorkCardFile(null);
+      setWorkCardBase64("");
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!rgBase64 || !cpfBase64 || !workCardBase64) {
+      alert("Por favor, faça o upload de todos os três documentos.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const data = await submitDocumentsService({
+        rgBase64,
+        cpfBase64,
+        workCardBase64,
+      });
+      setSubmission(data);
+      setIsReconnecting(false);
+      // Reset local file states
+      setRgFile(null);
+      setCpfFile(null);
+      setWorkCardFile(null);
+      setRgBase64("");
+      setCpfBase64("");
+      setWorkCardBase64("");
+      alert("Documentos enviados com sucesso!");
+    } catch (err: any) {
+      alert(err.message || "Erro ao enviar documentos.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Clock className="w-8 h-8 text-blue-600 animate-spin mr-2" />
+        <span className="text-gray-600">Carregando status de admissão...</span>
+      </div>
     );
+  }
 
-    setSelectedFile(null);
-    setUploadingDoc(null);
-  };
+  // Se houver uma submissão ativa e o colaborador não estiver no modo de reenvio
+  if (submission && !isReconnecting) {
+    const getStatusStyle = () => {
+      switch (submission.status) {
+        case "APROVADO":
+          return {
+            bg: "bg-green-50 border-green-200",
+            icon: <CheckCircle className="w-12 h-12 text-green-600" />,
+            title: "Documentação Aprovada!",
+            desc: "Parabéns! Seus documentos foram validados e aprovados pelo setor de RH. Seu processo de contratação está concluído.",
+            badge: "bg-green-100 text-green-800",
+          };
+        case "REJEITADO":
+          return {
+            bg: "bg-red-50 border-red-200",
+            icon: <AlertCircle className="w-12 h-12 text-red-600" />,
+            title: "Documentação Rejeitada",
+            desc: "Ocorreu um problema com a validação dos seus documentos. Por favor, verifique as imagens e envie novamente com melhor resolução ou dados corretos.",
+            badge: "bg-red-100 text-red-800",
+          };
+        default:
+          return {
+            bg: "bg-amber-50 border-amber-200",
+            icon: <Clock className="w-12 h-12 text-amber-600 animate-pulse" />,
+            title: "Documentação em Análise",
+            desc: "Recebemos os seus documentos! Eles estão passando por auditoria pelo setor de Recursos Humanos. Entraremos em contato em breve.",
+            badge: "bg-amber-100 text-amber-800",
+          };
+      }
+    };
 
-  const approved = documents.filter((d) => d.status === "approved").length;
-  const uploaded = documents.filter((d) => d.status === "uploaded").length;
-  const pending = documents.filter((d) => d.status === "pending").length;
-  const total = documents.length;
-  const progress = Math.round((approved / total) * 100);
+    const statusStyle = getStatusStyle();
 
-  return (
-    <div className="space-y-6">
-      {/* Status Geral */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl mb-2">Status da Admissão</h2>
-            <p className="text-blue-100">
-              {approved} de {total} documentos aprovados
+    return (
+      <div className="space-y-6">
+        {/* Banner de Status */}
+        <div className={`border rounded-xl p-6 ${statusStyle.bg} flex flex-col md:flex-row items-center gap-4 shadow-sm`}>
+          {statusStyle.icon}
+          <div className="flex-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
+              <h2 className="text-xl font-bold text-gray-900">{statusStyle.title}</h2>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusStyle.badge}`}>
+                {submission.status}
+              </span>
+            </div>
+            <p className="text-gray-700 text-sm leading-relaxed">{statusStyle.desc}</p>
+            <p className="text-xs text-gray-500 mt-2">
+              Enviado em: {new Date(submission.submittedAt).toLocaleString("pt-BR")}
             </p>
           </div>
-          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-            <span className="text-3xl">{progress}%</span>
+          {submission.status === "REJEITADO" && (
+            <button
+              onClick={() => setIsReconnecting(true)}
+              className="mt-4 md:mt-0 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition flex items-center gap-2 shrink-0 shadow"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reenviar Documentos
+            </button>
+          )}
+        </div>
+
+        {/* Visualização dos documentos enviados */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-6">Documentos Enviados</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="border border-gray-200 rounded-lg p-4 flex flex-col items-center">
+              <p className="text-sm font-semibold text-gray-700 mb-3">RG (Identidade)</p>
+              <div className="relative group w-full aspect-video bg-gray-50 rounded-md border overflow-hidden flex items-center justify-center">
+                <img
+                  src={submission.rgBase64}
+                  alt="RG"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => setPreviewImage({ name: "RG (Identidade)", base64: submission.rgBase64 })}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white gap-2 text-sm"
+                >
+                  <Eye className="w-5 h-5" />
+                  Visualizar
+                </button>
+              </div>
+            </div>
+
+            <div className="border border-gray-200 rounded-lg p-4 flex flex-col items-center">
+              <p className="text-sm font-semibold text-gray-700 mb-3">CPF</p>
+              <div className="relative group w-full aspect-video bg-gray-50 rounded-md border overflow-hidden flex items-center justify-center">
+                <img
+                  src={submission.cpfBase64}
+                  alt="CPF"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => setPreviewImage({ name: "CPF", base64: submission.cpfBase64 })}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white gap-2 text-sm"
+                >
+                  <Eye className="w-5 h-5" />
+                  Visualizar
+                </button>
+              </div>
+            </div>
+
+            <div className="border border-gray-200 rounded-lg p-4 flex flex-col items-center">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Carteira de Trabalho</p>
+              <div className="relative group w-full aspect-video bg-gray-50 rounded-md border overflow-hidden flex items-center justify-center">
+                <img
+                  src={submission.workCardBase64}
+                  alt="Carteira de Trabalho"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => setPreviewImage({ name: "Carteira de Trabalho", base64: submission.workCardBase64 })}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white gap-2 text-sm"
+                >
+                  <Eye className="w-5 h-5" />
+                  Visualizar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="w-full bg-blue-400/50 rounded-full h-3">
-          <div
-            className="bg-white h-3 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+
+        {/* Modal de Zoom da Imagem */}
+        {previewImage && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full p-4 relative flex flex-col max-h-[90vh]">
+              <div className="flex justify-between items-center pb-3 border-b mb-4">
+                <h4 className="text-lg font-bold text-gray-900">{previewImage.name}</h4>
+                <button onClick={() => setPreviewImage(null)} className="p-1 hover:bg-gray-100 rounded">
+                  <X className="w-6 h-6 text-gray-500" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-900 rounded-lg">
+                <img src={previewImage.base64} alt={previewImage.name} className="max-h-[70vh] object-contain" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+    );
+  }
 
-      {/* Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3">
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-            <CheckCircle className="w-6 h-6 text-green-600" />
+  // Formulário de Upload (quando não há submissão ou no modo de reenvio)
+  return (
+    <div className="space-y-6">
+      {isReconnecting && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-600" />
+            <span className="text-amber-800 text-sm">
+              Você está reconfigurando sua admissão. O envio destes novos documentos substituirá os anteriores.
+            </span>
           </div>
-          <div>
-            <p className="text-2xl text-gray-900">{approved}</p>
-            <p className="text-sm text-gray-600">Aprovados</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3">
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Clock className="w-6 h-6 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-2xl text-gray-900">{uploaded}</p>
-            <p className="text-sm text-gray-600">Em análise</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3">
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-            <AlertCircle className="w-6 h-6 text-orange-600" />
-          </div>
-          <div>
-            <p className="text-2xl text-gray-900">{pending}</p>
-            <p className="text-sm text-gray-600">Pendentes</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Lista de Documentos */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl text-gray-900 mb-6">Documentos Necessários</h2>
-        <div className="space-y-4">
-          {documents.map((doc) => (
-            <DocumentCard
-              key={doc.id}
-              document={doc}
-              onFileSelect={(file) => handleFileSelect(doc.id, file)}
-              isUploading={uploadingDoc === doc.id}
-              selectedFile={uploadingDoc === doc.id ? selectedFile : null}
-              onUpload={handleUpload}
-              onCancelUpload={() => {
-                setUploadingDoc(null);
-                setSelectedFile(null);
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Próximos Passos */}
-      {pending > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <h3 className="text-lg text-blue-900 mb-2">Próximos Passos</h3>
-          <p className="text-blue-700 mb-4">
-            Você ainda tem {pending} documento{pending > 1 ? "s" : ""} pendente
-            {pending > 1 ? "s" : ""}. Complete o envio para prosseguir com o
-            onboarding.
-          </p>
-          <p className="text-sm text-blue-600">
-            💡 Dica: Certifique-se de que os documentos estejam legíveis e em
-            formato PDF ou imagem (JPG, PNG).
-          </p>
+          <button
+            onClick={() => setIsReconnecting(false)}
+            className="text-xs bg-amber-200 hover:bg-amber-300 text-amber-900 px-3 py-1.5 rounded font-medium transition"
+          >
+            Cancelar Reenvio
+          </button>
         </div>
       )}
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Envio de Documentos</h2>
+        <p className="text-sm text-gray-600 mb-6">
+          Suba as fotos/imagens nítidas dos seguintes documentos de admissão. Todos são obrigatórios.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Card RG */}
+          <div className="border border-gray-200 rounded-xl p-5 flex flex-col justify-between min-h-[300px]">
+            <div>
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-md font-bold text-gray-800">1. RG</h3>
+                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">Obrigatório</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">Registro Geral de Identidade (Frente e Verso)</p>
+
+              {rgBase64 ? (
+                <div className="relative rounded-lg border overflow-hidden bg-gray-50 aspect-video">
+                  <img src={rgBase64} alt="RG Preview" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => handleRemoveFile("rg")}
+                    className="absolute top-2 right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition aspect-video">
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-xs text-gray-600 font-medium">Selecionar Imagem</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileChange("rg", file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+            {rgFile && (
+              <p className="text-xs text-gray-500 truncate mt-3">📂 {rgFile.name}</p>
+            )}
+          </div>
+
+          {/* Card CPF */}
+          <div className="border border-gray-200 rounded-xl p-5 flex flex-col justify-between min-h-[300px]">
+            <div>
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-md font-bold text-gray-800">2. CPF</h3>
+                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">Obrigatório</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">Cadastro de Pessoas Físicas ou CPF digital</p>
+
+              {cpfBase64 ? (
+                <div className="relative rounded-lg border overflow-hidden bg-gray-50 aspect-video">
+                  <img src={cpfBase64} alt="CPF Preview" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => handleRemoveFile("cpf")}
+                    className="absolute top-2 right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition aspect-video">
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-xs text-gray-600 font-medium">Selecionar Imagem</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileChange("cpf", file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+            {cpfFile && (
+              <p className="text-xs text-gray-500 truncate mt-3">📂 {cpfFile.name}</p>
+            )}
+          </div>
+
+          {/* Card Carteira de Trabalho */}
+          <div className="border border-gray-200 rounded-xl p-5 flex flex-col justify-between min-h-[300px]">
+            <div>
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-md font-bold text-gray-800">3. Carteira de Trabalho</h3>
+                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">Obrigatório</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">Carteira de Trabalho e Previdência Social (CTPS)</p>
+
+              {workCardBase64 ? (
+                <div className="relative rounded-lg border overflow-hidden bg-gray-50 aspect-video">
+                  <img src={workCardBase64} alt="CTPS Preview" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => handleRemoveFile("workCard")}
+                    className="absolute top-2 right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition aspect-video">
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-xs text-gray-600 font-medium">Selecionar Imagem</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileChange("workCard", file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+            {workCardFile && (
+              <p className="text-xs text-gray-500 truncate mt-3">📂 {workCardFile.name}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-4 border-t">
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !rgBase64 || !cpfBase64 || !workCardBase64}
+            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white disabled:text-gray-400 font-semibold rounded-lg shadow-md disabled:shadow-none hover:shadow-lg transition flex items-center justify-center gap-2"
+          >
+            {submitting ? (
+              <>
+                <Clock className="w-5 h-5 animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-5 h-5" />
+                Enviar Documentação
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
 function RHAdmissaoView() {
-  const [candidates] = useState([
-    {
-      id: "1",
-      name: "Ana Paula Costa",
-      department: "Tecnologia",
-      position: "Desenvolvedora Backend",
-      startDate: "22/04/2026",
-      docsApproved: 5,
-      docsTotal: 7,
-      status: "pending",
-    },
-    {
-      id: "2",
-      name: "Ricardo Mendes",
-      department: "Marketing",
-      position: "Analista de Marketing Digital",
-      startDate: "25/04/2026",
-      docsApproved: 7,
-      docsTotal: 7,
-      status: "approved",
-    },
-    {
-      id: "3",
-      name: "Juliana Santos",
-      department: "Vendas",
-      position: "Executiva de Contas",
-      startDate: "20/04/2026",
-      docsApproved: 4,
-      docsTotal: 7,
-      status: "review",
-    },
-    {
-      id: "4",
-      name: "Fernando Alves",
-      department: "Financeiro",
-      position: "Analista Financeiro Pleno",
-      startDate: "28/04/2026",
-      docsApproved: 3,
-      docsTotal: 7,
-      status: "pending",
-    },
-    {
-      id: "5",
-      name: "Beatriz Carvalho",
-      department: "Produto",
-      position: "Product Manager",
-      startDate: "29/04/2026",
-      docsApproved: 6,
-      docsTotal: 7,
-      status: "review",
-    },
-    {
-      id: "6",
-      name: "Lucas Ferreira",
-      department: "Tecnologia",
-      position: "Engenheiro de Software Sênior",
-      startDate: "02/05/2026",
-      docsApproved: 2,
-      docsTotal: 7,
-      status: "pending",
-    },
-    {
-      id: "7",
-      name: "Renata Dias",
-      department: "RH",
-      position: "Analista de Recursos Humanos",
-      startDate: "05/05/2026",
-      docsApproved: 7,
-      docsTotal: 7,
-      status: "approved",
-    },
-    {
-      id: "8",
-      name: "Thiago Mendonça",
-      department: "Operações",
-      position: "Coordenador de Operações",
-      startDate: "06/05/2026",
-      docsApproved: 1,
-      docsTotal: 7,
-      status: "pending",
-    },
-  ]);
+  const [submissions, setSubmissions] = useState<DocumentSubmissionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSub, setSelectedSub] = useState<DocumentSubmissionResponse | null>(null);
+  const [activeTab, setActiveTab] = useState<"rg" | "cpf" | "workCard">("rg");
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  const fetchSubmissions = async () => {
+    setLoading(true);
+    try {
+      const data = await getAllSubmissionsService();
+      setSubmissions(data);
+    } catch (err: any) {
+      alert(err.message || "Erro ao carregar submissões.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubmissions();
+  }, []);
+
+  const handleApprove = async (id: number) => {
+    setUpdatingId(id);
+    try {
+      await approveSubmissionService(id);
+      alert("Admissão aprovada com sucesso!");
+      setSelectedSub(null);
+      fetchSubmissions();
+    } catch (err: any) {
+      alert(err.message || "Erro ao aprovar.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    setUpdatingId(id);
+    try {
+      await rejectSubmissionService(id);
+      alert("Admissão rejeitada!");
+      setSelectedSub(null);
+      fetchSubmissions();
+    } catch (err: any) {
+      alert(err.message || "Erro ao rejeitar.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Clock className="w-8 h-8 text-blue-600 animate-spin mr-2" />
+        <span className="text-gray-600">Carregando auditoria de admissões...</span>
+      </div>
+    );
+  }
+
+  // Contadores
+  const totalSubmissions = submissions.length;
+  const pendingCount = submissions.filter((s) => s.status === "PENDENTE").length;
+  const approvedCount = submissions.filter((s) => s.status === "APROVADO").length;
+  const rejectedCount = submissions.filter((s) => s.status === "REJEITADO").length;
 
   return (
     <div className="space-y-6">
       {/* Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
-            <p className="text-2xl text-gray-900">18</p>
+            <p className="text-2xl font-bold text-gray-900">{totalSubmissions}</p>
           </div>
-          <p className="text-sm text-gray-600">Admissões Ativas</p>
-          <p className="text-xs text-green-600 mt-1">+5 esta semana</p>
+          <p className="text-sm font-medium text-gray-600">Total Enviado</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-5 h-5 text-orange-600" />
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-600" />
             </div>
-            <p className="text-2xl text-gray-900">14</p>
+            <p className="text-2xl font-bold text-gray-900">{pendingCount}</p>
           </div>
-          <p className="text-sm text-gray-600">Docs Pendentes</p>
-          <p className="text-xs text-orange-600 mt-1">Aguardando validação</p>
+          <p className="text-sm font-medium text-gray-600">Pendentes de Revisão</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
-            <p className="text-2xl text-gray-900">9</p>
+            <p className="text-2xl font-bold text-gray-900">{approvedCount}</p>
           </div>
-          <p className="text-sm text-gray-600">Concluídas no Mês</p>
-          <p className="text-xs text-green-600 mt-1">2 a mais vs. mês anterior</p>
+          <p className="text-sm font-medium text-gray-600">Aprovados</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-purple-600" />
+            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-red-600" />
             </div>
-            <p className="text-2xl text-gray-900">4</p>
+            <p className="text-2xl font-bold text-gray-900">{rejectedCount}</p>
           </div>
-          <p className="text-sm text-gray-600">Necessitam Atenção</p>
-          <p className="text-xs text-red-500 mt-1">Documentos rejeitados ou atrasados</p>
+          <p className="text-sm font-medium text-gray-600">Rejeitados</p>
         </div>
       </div>
 
-      {/* Lista de Candidatos */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl text-gray-900 mb-6">
-          Candidatos em Processo de Admissão
-        </h2>
-        <div className="space-y-4">
-          {candidates.map((candidate) => (
-            <CandidateCard key={candidate.id} candidate={candidate} />
-          ))}
-        </div>
+      {/* Lista de Envios */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Auditoria de Admissão Digital</h2>
+        {submissions.length === 0 ? (
+          <div className="text-center p-8 border border-dashed rounded-lg text-gray-500">
+            Nenhuma submissão de documentos encontrada até o momento.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {submissions.map((sub) => {
+              const progress = sub.status === "APROVADO" ? 100 : sub.status === "REJEITADO" ? 0 : 50;
+              return (
+                <div key={sub.id} className="border border-gray-200 rounded-xl p-5 hover:bg-gray-50/50 transition">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                        {sub.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">{sub.username}</h3>
+                        <p className="text-xs text-gray-500">
+                          Enviado em: {new Date(sub.submittedAt).toLocaleString("pt-BR")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          sub.status === "APROVADO"
+                            ? "bg-green-100 text-green-800"
+                            : sub.status === "REJEITADO"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {sub.status}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setSelectedSub(sub);
+                          setActiveTab("rg");
+                        }}
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition shadow-sm"
+                      >
+                        Revisar Documentos
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Progresso de Validação</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          sub.status === "APROVADO"
+                            ? "bg-green-500"
+                            : sub.status === "REJEITADO"
+                              ? "bg-red-500"
+                              : "bg-amber-500"
+                        }`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Integração eSocial */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl text-gray-900 mb-4">Integração eSocial</h2>
-        <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-6 h-6 text-green-600" />
-            <div>
-              <p className="text-green-900">Sistema conectado</p>
-              <p className="text-sm text-green-700">
-                Última sincronização: Hoje às 14:30
+      {/* Modal do Auditor de Documentos */}
+      {selectedSub && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-bold text-gray-900">Revisão de Documentos</h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    selectedSub.status === "APROVADO"
+                      ? "bg-green-100 text-green-800"
+                      : selectedSub.status === "REJEITADO"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-amber-100 text-amber-800"
+                  }`}>
+                    {selectedSub.status}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600">Candidato: <span className="font-semibold">{selectedSub.username}</span></p>
+              </div>
+              <button
+                onClick={() => setSelectedSub(null)}
+                className="p-2 hover:bg-gray-200 rounded-lg transition"
+              >
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Abas e Visualização */}
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+              {/* Barra lateral de abas */}
+              <div className="w-full md:w-64 border-r bg-gray-50/50 p-4 flex flex-col gap-2">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Documentos</p>
+                <button
+                  onClick={() => setActiveTab("rg")}
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+                    activeTab === "rg" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  RG (Identidade)
+                </button>
+                <button
+                  onClick={() => setActiveTab("cpf")}
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+                    activeTab === "cpf" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  CPF
+                </button>
+                <button
+                  onClick={() => setActiveTab("workCard")}
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+                    activeTab === "workCard" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Carteira de Trabalho
+                </button>
+              </div>
+
+              {/* Área de Visualização do Documento */}
+              <div className="flex-1 bg-gray-900 p-6 flex items-center justify-center overflow-auto">
+                <img
+                  src={
+                    activeTab === "rg"
+                      ? selectedSub.rgBase64
+                      : activeTab === "cpf"
+                        ? selectedSub.cpfBase64
+                        : selectedSub.workCardBase64
+                  }
+                  alt={activeTab.toUpperCase()}
+                  className="max-h-[55vh] object-contain rounded border border-gray-700 shadow-2xl"
+                />
+              </div>
+            </div>
+
+            {/* Footer de ações */}
+            <div className="p-5 border-t bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">
+              <p className="text-xs text-gray-500 text-center sm:text-left">
+                Verifique se todos os dados estão legíveis antes de tomar uma decisão.
               </p>
+              <div className="flex gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => handleReject(selectedSub.id)}
+                  disabled={updatingId !== null}
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold rounded-lg transition shadow flex items-center justify-center gap-2"
+                >
+                  {updatingId === selectedSub.id ? "Aguarde..." : "Rejeitar Documentos"}
+                </button>
+                <button
+                  onClick={() => handleApprove(selectedSub.id)}
+                  disabled={updatingId !== null}
+                  className="flex-1 sm:flex-none px-6 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold rounded-lg transition shadow flex items-center justify-center gap-2"
+                >
+                  {updatingId === selectedSub.id ? "Aguarde..." : "Aprovar Documentos"}
+                </button>
+              </div>
             </div>
           </div>
-          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-            Sincronizar Agora
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DocumentCard({
-  document,
-  onFileSelect,
-  isUploading,
-  selectedFile,
-  onUpload,
-  onCancelUpload,
-}: {
-  document: Document;
-  onFileSelect: (file: File) => void;
-  isUploading: boolean;
-  selectedFile: File | null;
-  onUpload: () => void;
-  onCancelUpload: () => void;
-}) {
-  const getStatusIcon = () => {
-    switch (document.status) {
-      case "approved":
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case "uploaded":
-        return <Clock className="w-5 h-5 text-blue-600" />;
-      case "rejected":
-        return <AlertCircle className="w-5 h-5 text-red-600" />;
-      default:
-        return <FileText className="w-5 h-5 text-gray-400" />;
-    }
-  };
-
-  const getStatusBadge = () => {
-    const badges = {
-      approved: "bg-green-100 text-green-700",
-      uploaded: "bg-blue-100 text-blue-700",
-      rejected: "bg-red-100 text-red-700",
-      pending: "bg-gray-100 text-gray-700",
-    };
-
-    const labels = {
-      approved: "Aprovado",
-      uploaded: "Em análise",
-      rejected: "Rejeitado",
-      pending: "Pendente",
-    };
-
-    return (
-      <span
-        className={`px-3 py-1 rounded-full text-xs ${badges[document.status]}`}
-      >
-        {labels[document.status]}
-      </span>
-    );
-  };
-
-  return (
-    <div className="border border-gray-200 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          {getStatusIcon()}
-          <div>
-            <p className="text-gray-900">{document.name}</p>
-            {document.uploadDate && (
-              <p className="text-xs text-gray-500">
-                Enviado em {document.uploadDate}
-              </p>
-            )}
-          </div>
-        </div>
-        {getStatusBadge()}
-      </div>
-
-      {isUploading && selectedFile ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <span className="text-sm text-blue-900">{selectedFile.name}</span>
-            </div>
-            <button
-              onClick={onCancelUpload}
-              className="text-blue-600 hover:text-blue-700"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <button
-            onClick={onUpload}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-          >
-            Confirmar Upload
-          </button>
-        </div>
-      ) : document.status === "pending" ? (
-        <label className="block">
-          <input
-            type="file"
-            className="hidden"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onFileSelect(file);
-            }}
-          />
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition">
-            <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">
-              Clique para fazer upload ou arraste o arquivo
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              PDF, JPG ou PNG (máx. 5MB)
-            </p>
-          </div>
-        </label>
-      ) : (
-        <div className="flex gap-2">
-          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-            <Eye className="w-4 h-4" />
-            <span className="text-sm">Visualizar</span>
-          </button>
-          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-            <Download className="w-4 h-4" />
-            <span className="text-sm">Download</span>
-          </button>
         </div>
       )}
-    </div>
-  );
-}
-
-function CandidateCard({ candidate }: { candidate: any }) {
-  const progress = Math.round(
-    (candidate.docsApproved / candidate.docsTotal) * 100
-  );
-
-  return (
-    <div className="border border-gray-200 rounded-lg p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-lg">
-            {candidate.name.charAt(0)}
-          </div>
-          <div>
-            <h3 className="text-lg text-gray-900">{candidate.name}</h3>
-            <p className="text-sm text-gray-600">{candidate.position}</p>
-            <p className="text-xs text-gray-500">
-              {candidate.department} • Início: {candidate.startDate}
-            </p>
-          </div>
-        </div>
-        <span
-          className={`px-3 py-1 rounded-full text-xs ${
-            candidate.status === "approved"
-              ? "bg-green-100 text-green-700"
-              : candidate.status === "review"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-orange-100 text-orange-700"
-          }`}
-        >
-          {candidate.status === "approved"
-            ? "Aprovado"
-            : candidate.status === "review"
-              ? "Em análise"
-              : "Ação necessária"}
-        </span>
-      </div>
-
-      <div className="space-y-2 mb-4">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Documentos</span>
-          <span className="text-gray-900">
-            {candidate.docsApproved}/{candidate.docsTotal}
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className={`h-2 rounded-full ${
-              progress === 100 ? "bg-green-500" : "bg-blue-500"
-            }`}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-          Revisar Documentos
-        </button>
-        <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-          <Eye className="w-5 h-5 text-gray-600" />
-        </button>
-      </div>
     </div>
   );
 }
