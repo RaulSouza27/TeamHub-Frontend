@@ -2,15 +2,15 @@ import { apiFetch } from "./api";
 
 export interface ComunicadoResponse {
   id: number;
-  titulo: string;
-  conteudo: string;
+  title: string;
+  content: string;
   createdAt: string;
   authorUsername: string;
 }
 
 export interface ComunicadoRequest {
-  titulo: string;
-  conteudo: string;
+  title: string;
+  content: string;
 }
 
 export async function getFeedService(): Promise<ComunicadoResponse[]> {

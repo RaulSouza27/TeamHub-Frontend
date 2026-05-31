@@ -79,8 +79,8 @@ export function Comunicacao() {
           name: item.authorUsername || "Autor Desconhecido",
           role: "RH",
         },
-        title: item.titulo,
-        content: item.conteudo,
+        title: item.title,
+        content: item.content,
         timestamp: new Date(item.createdAt).toLocaleString("pt-BR"),
         likes: 0,
         comments: 0,
@@ -118,8 +118,8 @@ export function Comunicacao() {
 
     try {
       await postAnnouncementService({
-        titulo: newPostTitle,
-        conteudo: newPostContent,
+        title: newPostTitle,
+        content: newPostContent,
       });
       setNewPostTitle("");
       setNewPostContent("");
