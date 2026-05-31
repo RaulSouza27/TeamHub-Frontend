@@ -42,7 +42,7 @@ export function RootLayout() {
       icon: UserPlus,
       label: "Admissão Digital",
       path: "/admissao",
-      roles: ["rh"], // Exclusivo para RH
+      roles: ["colaborador", "rh", "gestor"], // Acessível a todos
     },
     {
       icon: Users,
