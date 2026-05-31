@@ -10,6 +10,7 @@ import {
   Building2,
   Menu,
   ChevronDown,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -41,6 +42,12 @@ export function RootLayout() {
       icon: UserPlus,
       label: "Admissão Digital",
       path: "/admissao",
+      roles: ["rh"], // Exclusivo para RH
+    },
+    {
+      icon: Users,
+      label: "Usuários",
+      path: "/usuarios",
       roles: ["rh"], // Exclusivo para RH
     },
     {
