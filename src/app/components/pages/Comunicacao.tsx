@@ -1,5 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
+import {
+  getFeedService,
+  postAnnouncementService,
+} from "../../services/comunicacao";
 import {
   Heart,
   MessageCircle,
@@ -25,6 +29,7 @@ interface Post {
     role: string;
     avatar?: string;
   };
+  title?: string;
   content: string;
   image?: string;
   timestamp: string;
@@ -55,123 +60,44 @@ interface ChatUser {
 export function Comunicacao() {
   const { user } = useAuth();
   const [showChat, setShowChat] = useState(false);
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: "1",
-      author: { name: "RH TeamHub", role: "Recursos Humanos" },
-      content:
-        "🎉 Bem-vindos aos novos colaboradores que iniciaram esta semana! Estamos muito felizes em tê-los conosco. Não hesitem em compartilhar suas primeiras impressões e experiências aqui!",
-      timestamp: "Há 2 horas",
-      likes: 24,
-      comments: 8,
-      shares: 3,
-      pinned: true,
-      category: "Anúncio",
-    },
-    {
-      id: "2",
-      author: { name: "Carlos Oliveira", role: "Gestor de Tecnologia" },
-      content:
-        "Equipe, estou muito orgulhoso do trabalho que fizemos neste sprint! Conseguimos entregar todas as features planejadas com qualidade excepcional. Parabéns a todos! 🚀",
-      timestamp: "Há 4 horas",
-      likes: 42,
-      comments: 15,
-      shares: 5,
-      category: "Reconhecimento",
-    },
-    {
-      id: "3",
-      author: { name: "Maria Santos", role: "RH" },
-      content:
-        "📚 Lembrete: Hoje às 15h teremos o workshop sobre Gestão de Tempo e Produtividade. A sessão será online e todos estão convidados! Link na agenda compartilhada.",
-      timestamp: "Há 6 horas",
-      likes: 18,
-      comments: 4,
-      shares: 12,
-      category: "Evento",
-    },
-    {
-      id: "4",
-      author: { name: "João Silva", role: "Desenvolvedor Frontend" },
-      content:
-        "Meu primeiro dia foi incrível! A equipe me recebeu super bem e já me sinto parte do time. Muito animado para começar a contribuir com os projetos! 💙",
-      timestamp: "Há 1 dia",
-      likes: 56,
-      comments: 23,
-      shares: 2,
-      category: "Geral",
-    },
-    {
-      id: "5",
-      author: { name: "Ana Paula Costa", role: "Desenvolvedora Backend" },
-      content:
-        "Alguém tem dicas de bons restaurantes perto do escritório? Estou nova na região e procurando opções para o almoço! 🍽️",
-      timestamp: "Há 1 dia",
-      likes: 12,
-      comments: 18,
-      shares: 0,
-      category: "Geral",
-    },
-    {
-      id: "6",
-      author: { name: "Beatriz Carvalho", role: "Product Manager" },
-      content:
-        "📊 Compartilhando os resultados do roadmap Q1: entregamos 89% das features planejadas, reduzimos o tempo de ciclo em 18% e tivemos NPS de 4.7 com os stakeholders. Orgulhosa da evolução do time! 💪",
-      timestamp: "Há 2 dias",
-      likes: 67,
-      comments: 29,
-      shares: 14,
-      category: "Reconhecimento",
-    },
-    {
-      id: "7",
-      author: { name: "RH TeamHub", role: "Recursos Humanos" },
-      content:
-        "📋 Pesquisa de Clima Organizacional 2026 — Sua opinião é fundamental para continuarmos evoluindo! A pesquisa é anônima e leva apenas 8 minutos. O prazo encerra dia 30/04. Contamos com a sua participação! 🙏",
-      timestamp: "Há 2 dias",
-      likes: 31,
-      comments: 7,
-      shares: 22,
-      pinned: false,
-      category: "Anúncio",
-    },
-    {
-      id: "8",
-      author: { name: "Lucas Ferreira", role: "Engenheiro de Software" },
-      content:
-        "Acabei de concluir minha primeira semana aqui e posso dizer: a cultura da empresa é incrível! O ambiente é colaborativo, as pessoas são acessíveis e os projetos são desafiadores. Mal posso esperar pelo que vem aí! 🔥",
-      timestamp: "Há 3 dias",
-      likes: 44,
-      comments: 11,
-      shares: 1,
-      category: "Geral",
-    },
-    {
-      id: "9",
-      author: { name: "Fernanda Lima", role: "Coordenadora de Marketing" },
-      content:
-        "🎯 EVENTO: Na próxima sexta-feira teremos o nosso Happy Hour Mensal presencial no escritório! Haverá música, petiscos e muita integração. Confirme sua presença no formulário da intranet. Esperamos por você! 🎊",
-      timestamp: "Há 3 dias",
-      likes: 89,
-      comments: 34,
-      shares: 19,
-      category: "Evento",
-    },
-    {
-      id: "10",
-      author: { name: "Carlos Oliveira", role: "Gestor de Tecnologia" },
-      content:
-        "Parabéns ao Pedro Santos pela certificação AWS Solutions Architect que conquistou essa semana! É o tipo de iniciativa que inspira toda a equipe. 🏆 Continue crescendo!",
-      timestamp: "Há 4 dias",
-      likes: 73,
-      comments: 18,
-      shares: 6,
-      category: "Reconhecimento",
-    },
-  ]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
 
+  const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("Todos");
+
+  const fetchFeed = async () => {
+    setLoadingFeed(true);
+    setFeedError(null);
+    try {
+      const data = await getFeedService();
+      const mappedPosts: Post[] = data.map((item) => ({
+        id: item.id.toString(),
+        author: {
+          name: item.authorUsername || "Autor Desconhecido",
+          role: "RH",
+        },
+        title: item.titulo,
+        content: item.conteudo,
+        timestamp: new Date(item.createdAt).toLocaleString("pt-BR"),
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        category: "Anúncio",
+      }));
+      setPosts(mappedPosts);
+    } catch (err: any) {
+      setFeedError(err.message || "Erro ao carregar os comunicados.");
+    } finally {
+      setLoadingFeed(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFeed();
+  }, []);
 
   const handleLike = (postId: string) => {
     setPosts((prev) =>
@@ -187,30 +113,20 @@ export function Comunicacao() {
     );
   };
 
-  const handleNewPost = () => {
-    if (!newPostContent.trim() || !user) return;
+  const handleNewPost = async () => {
+    if (!newPostTitle.trim() || !newPostContent.trim() || !user) return;
 
-    const newPost: Post = {
-      id: Date.now().toString(),
-      author: {
-        name: user.name,
-        role:
-          user.role === "rh"
-            ? "RH"
-            : user.role === "gestor"
-              ? "Gestor"
-              : "Colaborador",
-      },
-      content: newPostContent,
-      timestamp: "Agora",
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      category: "Geral",
-    };
-
-    setPosts([newPost, ...posts]);
-    setNewPostContent("");
+    try {
+      await postAnnouncementService({
+        titulo: newPostTitle,
+        conteudo: newPostContent,
+      });
+      setNewPostTitle("");
+      setNewPostContent("");
+      fetchFeed();
+    } catch (err: any) {
+      alert(err.message || "Erro ao publicar o comunicado.");
+    }
   };
 
   const filters = ["Todos", "Anúncio", "Reconhecimento", "Evento", "Geral"];
@@ -249,41 +165,43 @@ export function Comunicacao() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Feed Principal */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Criar Post */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-lg shrink-0">
-                {user.name.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <textarea
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
-                  placeholder="Compartilhe algo com a equipe..."
-                  className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  rows={3}
-                />
-                <div className="flex items-center justify-between mt-3">
-                  <div className="flex gap-2">
-                    <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                      <Image className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                      <Smile className="w-5 h-5 text-gray-600" />
+          {/* Criar Post (Apenas RH) */}
+          {user.role === "rh" && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Novo Comunicado</h3>
+              <div className="flex gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-lg shrink-0">
+                  {user.name.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Título do Comunicado..."
+                    value={newPostTitle}
+                    onChange={(e) => setNewPostTitle(e.target.value)}
+                    className="w-full mb-3 p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm font-semibold"
+                  />
+                  <textarea
+                    value={newPostContent}
+                    onChange={(e) => setNewPostContent(e.target.value)}
+                    placeholder="Escreva o comunicado aqui..."
+                    className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    rows={4}
+                  />
+                  <div className="flex items-center justify-end mt-3">
+                    <button
+                      onClick={handleNewPost}
+                      disabled={!newPostTitle.trim() || !newPostContent.trim()}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      Publicar
                     </button>
                   </div>
-                  <button
-                    onClick={handleNewPost}
-                    disabled={!newPostContent.trim()}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    Publicar
-                  </button>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Filtros */}
           <div className="bg-white rounded-xl shadow-sm p-4">
@@ -412,6 +330,9 @@ function PostCard({ post, onLike }: { post: Post; onLike: () => void }) {
 
       {/* Conteúdo */}
       <div className="mb-4">
+        {post.title && (
+          <h4 className="text-lg font-bold text-gray-950 mb-2">{post.title}</h4>
+        )}
         <p className="text-gray-800 whitespace-pre-wrap">{post.content}</p>
         {post.image && (
           <img
