@@ -1,4 +1,5 @@
-const BASE_URL = 'https://backend-production-b3b6.up.railway.app';
+// const BASE_URL = 'https://backend-production-b3b6.up.railway.app';
+const BASE_URL = 'http://localhost:1200';
 
 /**
  * Função wrapper para o fetch que já adiciona o token JWT nas requisições.

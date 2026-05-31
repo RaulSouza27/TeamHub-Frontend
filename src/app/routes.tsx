@@ -5,6 +5,7 @@ import { Dashboard } from "./components/pages/Dashboard";
 import { Admissao } from "./components/pages/Admissao";
 import { Onboarding } from "./components/pages/Onboarding";
 import { Comunicacao } from "./components/pages/Comunicacao";
+import { Usuarios } from "./components/pages/Usuarios";
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,10 @@ export const router = createBrowserRouter([
       {
         path: "comunicacao",
         Component: Comunicacao,
+      },
+      {
+        path: "usuarios",
+        Component: Usuarios,
       },
     ],
   },
