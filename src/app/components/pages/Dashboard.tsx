@@ -58,13 +58,6 @@ export function Dashboard() {
         </p>
       </div>
 
-      {apiMessage && (
-        <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-blue-600" />
-          <p><strong>Mensagem do Backend:</strong> {apiMessage}</p>
-        </div>
-      )}
-
       {/* Dashboard por perfil */}
       {user.role === "colaborador" && <ColaboradorDashboard />}
       {user.role === "rh" && <RHDashboard />}
